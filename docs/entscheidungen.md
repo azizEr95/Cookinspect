@@ -56,3 +56,22 @@ Das Performance-Log mit `--disable-features=IsolateOrigins,site-per-process` erf
 **Vorschlag für den Methodenteil:** „Da einige CMPs die Seite unmittelbar nach der Entscheidung neu laden, übermittelt unser Listener jedes Ereignis der TCF-API sofort an das Messprogramm, statt es in der Seite zwischenzuspeichern. Ereignisse mit `eventStatus = useractioncomplete` gehen so auch bei einem Neuladen durch die CMP nicht verloren.“
 
 **Noch zu prüfen (Phase 3):** verschachtelte iframes, Requests von Service Workern, Zeitpunkt des Preload-Skripts relativ zu den Seitenskripten.
+
+## E3 (Phase 2b, 2026-10-29): Zwei Läufe des Vorfilters
+
+Der Vorfilter läuft zweimal über alle 1000 Domains, jeweils mit eigenem Lauf-Ordner und eigenen Metadaten:
+
+| Lauf | Aufruf | Zweck |
+|---|---|---|
+| Vorab | `prefilter.py LISTE --purpose vorab` → `data/prefilter-vorab-<Zeit>/` | jetzt: Zahl der TCF-Seiten, daraus der Aufwand für den halbautomatischen Teil |
+| Messung | `prefilter.py LISTE --purpose messung` → `data/prefilter-messung-<Zeit>/` | direkt vor der eigentlichen Messung; **nur dieser Lauf zählt im Paper**, seine `tcf_sites.csv` ist die Eingabe der Messung |
+
+Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung können Wochen liegen. Die Zahlen im Paper und die gemessenen Seiten sollen aus demselben Zeitpunkt stammen. Der Vergleich beider Läufe zeigt, wie stabil die Auswahl ist. `prefilter.py` verlangt entweder `--test` oder `--purpose`.
+
+## E4 (2026-10-29, später): Cookie Glasses auf TCF v2.2 erweitern
+
+**Später, frühestens nach der Messung.** Jetzt wird nichts daran umgesetzt.
+
+- Idee: die Browser-Erweiterung Cookie Glasses (Matte et al., GPLv3) auf TCF v2.2 erweitern, z. B. als Demo fürs Poster.
+- Vorgabe für Phase 4: Der Decoder (`decode/`, `@iabtechlabtcf/core`) wird so gebaut, dass er sich dafür wiederverwenden lässt. Die Dekodierung bleibt eine eigenständige Funktion „TC-String rein, alle IDs als JSON raus“, ohne Abhängigkeit von Selenium, Python oder der Datenbank, damit sie auch in einer Erweiterung laufen kann.
+- Lizenz: Cookie Glasses steht unter GPLv3; eine Erweiterung davon muss ebenfalls GPLv3 sein. Für unseren Decoder heißt das: keinen Code aus Cookie Glasses übernehmen, damit er unabhängig lizenzierbar bleibt.

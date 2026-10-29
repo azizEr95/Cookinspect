@@ -71,8 +71,10 @@ def find_robots(domain):
 
 
 def protego_decision(status, content, page_url):
-    """RFC 9309: a 4xx robots.txt allows everything, a 5xx or unreachable one disallows everything."""
-    if status is None or status >= 500:
+    """RFC 9309: a 4xx robots.txt allows everything, a 5xx or unreachable one disallows everything.
+    Deviation from RFC 9309: 429 (Too Many Requests) is treated like 5xx, as Google does, because
+    it asks for fewer requests (docs/abweichungen.md)."""
+    if status is None or status >= 500 or status == 429:
         return False
     if status >= 400:
         return True

@@ -20,8 +20,14 @@ Blocks by bot detection are not avoided, only detected (heuristically, see detec
 counted and reported.
 
     venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --limit 10 --test
+    venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose vorab
+    venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose messung
 
-Writes into data/prefilter-<timestamp>/: run_metadata.json, prefilter.csv (one row per domain),
+Two full runs are planned (docs/entscheidungen.md, E3): "vorab" now, for the number of TCF
+sites, and "messung" right before the measurement; only the second one counts in the paper and
+its tcf_sites.csv is the input of the measurement.
+
+Writes into data/prefilter-<purpose>-<timestamp>/: run_metadata.json, prefilter.csv (one row per domain),
 funnel.json and funnel.md, and tcf_sites.csv (the input of the automatic and semi-automatic modes).
 """
 import argparse
@@ -217,6 +223,10 @@ def as_bool(value):
     return value is True or value == "True"
 
 
+def share(part, whole):
+    return round(100 * part / whole, 1) if whole else None
+
+
 def funnel(rows):
     """Counts per robots.txt decision. 'loaded' and below only contain sites that Protego allows,
     because only those are loaded."""
@@ -237,7 +247,11 @@ def funnel(rows):
             "blocked": sum(1 for r in loaded if as_bool(r.get("blocked"))),
             "tcfapi_without_ping": sum(1 for r in loaded if as_bool(r.get("tcfapi")) and not as_bool(r.get("tcf"))),
             "tcf": len(tcf),
-            "tcf_share_of_loaded": round(100 * len(tcf) / len(loaded), 1) if loaded else None,
+            "tcf_share_of_loaded": share(len(tcf), len(loaded)),
+            # without blocked sites in the denominator; Matte did not detect blocks, so the share
+            # above is the one comparable with Tab. II
+            "tcf_share_of_loaded_not_blocked": share(
+                len(tcf), sum(1 for r in loaded if not as_bool(r.get("blocked")))),
         }
     return result
 
@@ -264,8 +278,12 @@ def funnel_table(result):
     row("– davon Sperre erkannt (heuristisch)", [c[n]["blocked"] for n in names])
     row("– davon `__tcfapi` ohne Antwort auf ping", [c[n]["tcfapi_without_ping"] for n in names])
     row("mit TCF (ping antwortet)", [c[n]["tcf"] for n in names], MATTE_TAB_II_DE["tcf"])
-    row("TCF-Anteil an geladenen", [f"{c[n]['tcf_share_of_loaded']} %" if c[n]["tcf_share_of_loaded"] is not None
-                                    else "–" for n in names], f"{MATTE_TAB_II_DE['tcf_share_of_loaded']} %")
+    def percent(value):
+        return f"{value} %" if value is not None else "–"
+
+    row("TCF-Anteil an geladenen (mit gesperrten, vergleichbar mit Matte)",
+        [percent(c[n]["tcf_share_of_loaded"]) for n in names], percent(MATTE_TAB_II_DE["tcf_share_of_loaded"]))
+    row("TCF-Anteil an geladenen ohne gesperrte", [percent(c[n]["tcf_share_of_loaded_not_blocked"]) for n in names])
     return "\n".join(lines)
 
 
@@ -274,14 +292,19 @@ def main():
     parser.add_argument("list", help="CSV with rank,domain columns, or one domain per line")
     parser.add_argument("--limit", type=int, help="only the first N domains (for tests)")
     parser.add_argument("--test", action="store_true", help="test run: CRAWL_USER and a clean Git state are not required")
+    parser.add_argument("--purpose", choices=["vorab", "messung"],
+                        help="full run: 'vorab' (number of TCF sites) or 'messung' (counts in the paper)")
     args = parser.parse_args()
+    if args.test == bool(args.purpose):
+        parser.error("give either --test or --purpose vorab|messung")
+    purpose = args.purpose or "test"
 
     domains = read_ranked_domains(args.list)
     if args.limit is not None:
         domains = domains[:args.limit]
-    metadata = new_metadata("prefilter", args.test, website_list={
+    metadata = new_metadata("prefilter", args.test, purpose=purpose, website_list={
         "path": str(args.list), "info": list_info(args.list), "domains": len(domains), "limit": args.limit})
-    run_dir = config.DATA_DIR / f"prefilter-{datetime.now():%Y-%m-%d--%H-%M-%S}"
+    run_dir = config.DATA_DIR / f"prefilter-{purpose}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
     run_dir.mkdir(parents=True)
     write_metadata(metadata, run_dir)
     print(f"Run directory: {run_dir}")

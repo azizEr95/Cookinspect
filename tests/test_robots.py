@@ -26,6 +26,12 @@ def test_403_disallows_everything_except_in_rfc_9309():
     assert decisions(403) == (True, False, False)
 
 
+def test_429_disallows_like_5xx_in_our_decision():
+    # deviation from RFC 9309 (which would allow everything for a 4xx), as Google does;
+    # urllib and the original Cookinspect allow everything
+    assert decisions(429) == (False, True, True)
+
+
 def test_5xx_disallows_except_in_original_cookinspect():
     assert decisions(503) == (False, False, True)
 

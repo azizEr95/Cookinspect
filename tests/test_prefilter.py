@@ -58,7 +58,8 @@ def test_funnel_columns():
     assert protego["load_failed"] == 1
     assert protego["blocked"] == 1
     assert protego["tcfapi_without_ping"] == 1
-    assert protego["tcf_share_of_loaded"] == 20.0
+    assert protego["tcf_share_of_loaded"] == 20.0              # 1 of 5 loaded
+    assert protego["tcf_share_of_loaded_not_blocked"] == 25.0  # 1 of 4 loaded and not blocked
     assert (urllib["allowed"], urllib["loaded"]) == (5, 4)
     # c.de is allowed by the original code, but not loaded, because Protego forbids it;
     # e.de is unreachable, so it does not count as allowed

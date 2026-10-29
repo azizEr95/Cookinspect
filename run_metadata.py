@@ -65,21 +65,22 @@ def settings_from_config():
 
 
 def check_environment(test_run):
-    """Safe environment. Always refuses to run under another user than config.CRAWL_USER (if set).
-    A real crawl (not a test run) is also refused when CRAWL_USER is not set or when the working
-    tree has uncommitted changes, because then the Git commit in the metadata would not describe
-    the code that ran."""
+    """Safe environment. A real crawl (not a test run) is refused when config.CRAWL_USER is not set,
+    when it runs under another macOS user, or when the working tree has uncommitted changes
+    (then the Git commit in the metadata would not describe the code that ran). A test run may
+    run under any user, e.g. for development; the metadata record who ran it."""
     user = getpass.getuser()
-    if config.CRAWL_USER is not None and user != config.CRAWL_USER:
-        raise SystemExit(f"Run this under the macOS user '{config.CRAWL_USER}', not '{user}' (config.CRAWL_USER).")
+    right_user = config.CRAWL_USER is not None and user == config.CRAWL_USER
     if not test_run:
         if config.CRAWL_USER is None:
             raise SystemExit("Real crawl refused: config.CRAWL_USER is not set. For a test, add --test.")
+        if not right_user:
+            raise SystemExit(f"Real crawl refused: run it as the macOS user '{config.CRAWL_USER}', not '{user}'.")
         if git_commit()["dirty"]:
             raise SystemExit("Real crawl refused: uncommitted changes in the repository. Commit first, or add --test.")
-    elif config.CRAWL_USER is None:
-        print("Warning: config.CRAWL_USER is not set, so the own crawl user is not checked (test run).")
-    return {"os_user": user, "crawl_user_checked": config.CRAWL_USER is not None}
+    elif not right_user:
+        print(f"Warning: test run as '{user}', not as the crawl user ({config.CRAWL_USER}).")
+    return {"os_user": user, "crawl_user": config.CRAWL_USER, "run_as_crawl_user": right_user}
 
 
 def browser_metadata():

@@ -28,17 +28,23 @@ def test_real_crawl_refused_when_dirty(monkeypatch):
 def test_real_crawl_allowed_when_clean_and_right_user(monkeypatch):
     clean(monkeypatch)
     monkeypatch.setattr(config, "CRAWL_USER", getpass.getuser())
-    assert run_metadata.check_environment(test_run=False)["crawl_user_checked"] is True
+    assert run_metadata.check_environment(test_run=False)["run_as_crawl_user"] is True
 
 
-def test_wrong_user_refused_also_in_test_run(monkeypatch):
+def test_real_crawl_refused_under_other_user(monkeypatch):
     clean(monkeypatch)
     monkeypatch.setattr(config, "CRAWL_USER", "someone-else")
     with pytest.raises(SystemExit, match="someone-else"):
-        run_metadata.check_environment(test_run=True)
+        run_metadata.check_environment(test_run=False)
+
+
+def test_test_run_under_other_user_only_warns(monkeypatch):
+    clean(monkeypatch)
+    monkeypatch.setattr(config, "CRAWL_USER", "someone-else")
+    assert run_metadata.check_environment(test_run=True)["run_as_crawl_user"] is False
 
 
 def test_test_run_allowed_without_crawl_user_and_dirty(monkeypatch):
     clean(monkeypatch, dirty=True)
     monkeypatch.setattr(config, "CRAWL_USER", None)
-    assert run_metadata.check_environment(test_run=True)["crawl_user_checked"] is False
+    assert run_metadata.check_environment(test_run=True)["run_as_crawl_user"] is False
