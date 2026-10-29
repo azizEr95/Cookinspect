@@ -1,0 +1,5 @@
+# Python 3.12. Install: python3.12 -m venv venv && venv/bin/pip install -r requirements.txt
+selenium==4.51.0
+protego==0.7.0
+tldextract==5.4.0
+pytest==9.2.0

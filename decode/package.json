@@ -1,0 +1,9 @@
+{
+  "name": "cookinspect-decode",
+  "private": true,
+  "description": "Decodes IAB TCF v2 TC strings with the official IAB Tech Lab library",
+  "type": "module",
+  "dependencies": {
+    "@iabtechlabtcf/core": "1.5.22"
+  }
+}

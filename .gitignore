@@ -1,14 +1,11 @@
-cookinspect.conf
-cookinspect_ac.conf
-cookinspect_prod.conf
-geckodriver.log
 __pycache__/
-TAGS
-*.crx
-*.pem
-understand-cookie-banners
-todo.csv
-vendorlist/vendorlist_*.json
-vendorlist/v2/
+venv/
 node_modules/
-package-lock.json
+# crawl results and downloaded lists (GVL, CMP list) are not committed
+data/
+# third-party paper PDF (copyrighted), kept locally only
+docs/*.pdf
+# old Cookinspect files
+cookinspect.conf
+TAGS
+*.pem
