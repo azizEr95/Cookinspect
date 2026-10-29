@@ -30,8 +30,8 @@ its tcf_sites.csv is the input of the measurement.
 Writes every result into the database of its purpose (config.database_path: data/test.sqlite,
 data/vorab.sqlite or data/messung.sqlite; tables run and prefilter_result) and,
 as export, into data/prefilter-<purpose>-<timestamp>/: run_metadata.json, prefilter.csv (one row
-per domain), funnel.json and funnel.md, and tcf_sites.csv (the input of the automatic and
-semi-automatic modes).
+per domain), funnel.json and funnel.md, and tcf_sites.csv with tcf_sites.json (the input of the automatic
+and semi-automatic modes, with the Tranco list ID and the prefilter run).
 """
 import argparse
 import csv
@@ -257,6 +257,11 @@ def main():
         for row in rows:
             if row["robots_allowed"] and row["loaded"] and row.get("tcf"):
                 writer.writerow([row["rank"], row["domain"], row["main_page_url"], row.get("cmp_id")])
+
+    # list information next to tcf_sites.csv, so that the automatic and semi-automatic runs that
+    # read it record the Tranco list ID as well (run_list.list_info)
+    (run_dir / "tcf_sites.json").write_text(json.dumps(
+        {**(list_info(args.list) or {}), "prefilter_run_id": run_id, "prefilter_purpose": purpose}, indent=2))
 
     result = funnel(rows)
     metadata["finished_at"] = datetime.now(timezone.utc).isoformat()
