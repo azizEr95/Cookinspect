@@ -11,20 +11,15 @@ import sys
 import datetime
 import time
 import argparse
-import copy
-import urllib.robotparser
-import urllib.request
-import ssl
-import socket
-from http.client import InvalidURL, BadStatusLine, IncompleteRead
+from urllib.parse import urlparse
 import pickle
 import os
 
-from selenium.webdriver import Chrome
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import *
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
+import config
+from browser import start_chrome
+from robots import check_robots
 from utils import *
 from iab_data_collection import *
 from database import *
@@ -47,22 +42,9 @@ def parse_command_line():
     group_main.add_argument('-d', '--dump', action='store_const', const=True, help='Display previous results on target domain.')
     group_main.add_argument('-a2', '--automatic-violations-check-full', action='store_const', const=True, help='Version of --automatic-violations-check used for the paper\'s crawl (performs more tests).')
 
-    extension = parser.add_argument_group('Extensions')
-    extension.add_argument('--override-cmp', action='store_const', const=True, help='Add override_cmp extension (custom extension to detect vendors violations)')
-    extension.add_argument('--override-cmp-monitor-postmessages', action='store_const', const=True, help='Add override_cmp_monitor_postmessages extension (custom extension to detect vendors violations)')
-    extension.add_argument('--monitor-postmessages', action='store_const', const=True, help='Add monitor_postmessages extension (custom extension to detect vendors violations)')
-    extension.add_argument('--cookie-glasses', action='store_const', const=True, help='Add Cookie Glasses extension (custom extension to detect automatic violations)')
-    extension.add_argument('--watch-requests', action='store_const', const=True, help='Add watch_requests extension (custom extension to extract HTTP requests)')
-    extension.add_argument('--get-euconsent', action='store_const', const=True, help='Add get_euconsent extension (custom extension to get shared consent cookie)')
-    extension.add_argument('--probe-cmp-postmessage', action='store_const', const=True, help='Add probe_cmp_postmessage extension (custom extension to probe for consent string in a third-party position)')
-
     other = parser.add_argument_group('Other options')
-    other.add_argument('--headful', action='store_const', const=True, help='Do not run headless')
     other.add_argument('--no-fetch', action='store_const', const=True, help='Do not fetch any page: just open the browser (useful for debugging)')
     other.add_argument('--accept-button', help='Class name of the accept button of the banner')
-    other.add_argument('--ignore-robots-txt', action='store_const', const=True, help='Ignore verification that website allow crawling of main page in robots.txt file')
-    other.add_argument('--bypass-robots-txt', action='store_const', const=True, help='Check whether website allow crawling of main page in robots.txt file, but ignore result.')
-    other.add_argument('--add-shared-cookie', action='store_const', const=True, help='Add a cookie of the .consensu.org domain containing a consent string, to test usage of shared cookie')
     other.add_argument('--new-only', action='store_const', const=True, help='Ignore website if already present in the database.')
     other.add_argument('--retry', action='store_const', const=True, help='Retry website for which access was not successful (in combination with --new-only).')
 
@@ -74,153 +56,30 @@ def get_main_page(url):
     main_page_url = "%s://%s" % (parsed_url.scheme, parsed_url.netloc)
     return main_page_url
 
-class TimeoutRobotFileParser(urllib.robotparser.RobotFileParser):
-    # Add a timeout when checking robots.txt
-    # https://stackoverflow.com/questions/15235374/python-robotparser-timeout-equivalent
-    # Timeout test case: https://torrent-french.com or https://luckytorrent.info/
-    def __init__(self, url):
-        super().__init__(url)
-        self.timeout = TIMEOUT
-        # Uncomment to ignore certificate verification (+below)
-        #self.ctx = ssl.create_default_context()
-        #self.ctx.check_hostname = False
-        #self.ctx.verify_mode = ssl.CERT_NONE
-
-    def read(self):
-        """Reads the robots.txt URL and feeds it to the parser."""
-        try:
-            #f = urllib.request.urlopen(self.url, timeout=self.timeout, context=self.ctx)
-            f = urllib.request.urlopen(self.url, timeout=self.timeout)
-        except urllib.error.HTTPError as err:
-            if err.code in (401, 403):
-                self.disallow_all = True
-            elif err.code >= 400:
-                self.allow_all = True
-        else:
-            raw = f.read()
-            try:
-                self.parse(raw.decode("utf-8").splitlines())
-            except UnicodeDecodeError:
-                # try with different encoding
-                # Test case: http://www.lavoixdunord.fr/robots.txt
-                self.parse(raw.decode("latin1").splitlines())
-
-def check_robots_txt_authorization(browser, website):
-    # positive example : fili.cc
-    # negative example : google.fr
-    user_agent = browser.execute_script("return navigator.userAgent;")
-    robots_txt_url = website.main_page_url + "/robots.txt"
-    rp = TimeoutRobotFileParser(robots_txt_url)
-    try:
-        rp.read()
-    except urllib.error.URLError as e:
-        print("Error while trying to read robots.txt %s" % e)
-        reason = str(e.reason)
-        if reason.startswith('[SSL:') or reason in ('timed out',
-                                                    '[Errno 111] Connection refused',
-                                                    '[Errno 104] Connection reset by peer',
-                                                    '_ssl.c:1059: The handshake operation timed out',
-                                                    '[Errno 0] Error'):
-            ok = website.move_to_http()
-            if not ok:
-                # We were already in HTTP. Exit to avoid loop.
-                website.access_successful = False
-                return True
-            # try again
-            return check_robots_txt_authorization(browser, website)
-        elif reason in ('[Errno -2] Name or service not known', '[Errno -3] Temporary failure in name resolution'):
-            ok = website.remove_www()
-            if not ok:
-                website.access_successful = False
-                return True
-            return check_robots_txt_authorization(browser, website)
-        else:
-            # urllib has some unknown issue
-            # Let's assume access is not refused in this case
-            print("Unknown error while trying to access robots.txt")
-            return True
-    except (ConnectionResetError, socket.timeout, ssl.SSLError, IncompleteRead) as e:
-        # Test case for socket.timeout: www.airfrance.fr
-        print("Network-related error while trying to read robots.txt: %s" % e)
-        ok = website.move_to_http()
-        if not ok:
-            # We were already in HTTP. Exit to avoid loop.
-            website.access_successful = False
-            return True
-        # try again
-        return check_robots_txt_authorization(browser, website)
-    except UnicodeDecodeError as e:
-        # This can happen for many reasons: garbage sent, redirection to main
-        # site...
-        print("UnicodeDecodeError when reading robots.txt: %s" % e)
-        return True
-    except InvalidURL as e:
-        # This is a bug in the RobotFileParser library: if redirected to an
-        # address using a different port, address translation fails
-        print("Issue: redirection to non-80 port address: %s" % e)
-        return True
-    except BadStatusLine as e:
-        print("HTTP Error: BadStatusLine: %s" % e)
-        website.access_successful = False
-        return True
-    if not rp.can_fetch(user_agent, website.main_page_url):
+def robots_txt_allows(website):
+    """robots.txt is checked once per run and respected in every mode (robots.py).
+    The decisions of urllib.robotparser and of the original Cookinspect are printed for comparison."""
+    if getattr(website, "robots_checked_this_run", False):
+        return not website.robot_txt_ban
+    print("Checking robots.txt...")
+    result = check_robots(website.main_page_url)
+    website.robots_checked_this_run = True
+    website.robot_txt_ban = not result["robots_allowed"]
+    print("robots.txt: status %s, allowed: %s (urllib: %s, original Cookinspect: %s)"
+          % (result["robots_status"], result["robots_allowed"], result["robots_allowed_urllib"],
+             result["robots_allowed_cookinspect"]))
+    if website.robot_txt_ban:
         print("Access refused in robots.txt file.")
-        return False
-    print("Access allowed")
-    return True
+    return result["robots_allowed"]
 
 def start_browser_and_fetch(website, args):
-    # returns None if access is not authorized in robots.txt
-    opts = Options()
-    if not args.headful:
-        opts.headless = True
-        assert opts.headless  # Operating in headless mode
-    if args.override_cmp:
-        opts.add_extension('./extensions/override_cmp.crx')
-    if args.cookie_glasses:
-        opts.add_extension('./extensions/cookie_glasses.crx')
-    if args.override_cmp_monitor_postmessages:
-        opts.add_extension('./extensions/override_cmp_monitor_postmessages.crx')
-    if args.monitor_postmessages:
-        opts.add_extension('./extensions/monitor_postmessages.crx')
-    if args.watch_requests:
-        opts.add_extension('./extensions/watch_requests.crx')
-    if args.get_euconsent:
-        opts.add_extension('./extensions/get_euconsent.crx')
-    if args.probe_cmp_postmessage:
-        opts.add_extension('./extensions/probe_cmp_postmessage.crx')
-    # enable browser logging
-    d = DesiredCapabilities.CHROME
-    d['goog:loggingPrefs'] = { 'browser':'ALL' }
-    browser = Chrome(options=opts, desired_capabilities=d)
-
-    if not args.ignore_robots_txt and not website.robot_txt_ban == False: # ignore, or already checked
-        print("Checking robots.txt...")
-        access_allowed = check_robots_txt_authorization(browser, website)
-        if not access_allowed:
-            website.robot_txt_ban = True
-            if not args.bypass_robots_txt:
-                quit_properly(browser)
-                return None
-        else:
-            website.robot_txt_ban = False
-        if website.access_successful == False:
-            # server access failed when checking robots.txt
-            quit_properly(browser)
-            return None
-
-    browser.set_window_size(1366, 768) # most common display https://www.w3schools.com/browsers/browsers_display.asp
-    if args.add_shared_cookie:
-        # loading a site is necessary to be able to set a cookie
-        # see https://github.com/w3c/webdriver/issues/1238
-        browser.get('https://perdu.com')
-        browser.add_cookie({'name': 'euconsent', 'value': CONSENT_STRING_SENSCRITIQUE, 'domain': '.consensu.org', 'path': '/'})
-        print('cookie added')
+    # returns None if access is not allowed in robots.txt or the site cannot be loaded
+    if not robots_txt_allows(website):
+        return None
+    browser = start_chrome()   # pinned Chrome for Testing, fresh profile, visible window
     if args.no_fetch:
         time.sleep(3600)
-
-    browser.set_page_load_timeout(TIMEOUT)
-    for i in range(MAX_TRIES_TIMEOUT):
+    for i in range(config.MAX_TRIES_TIMEOUT):
         try:
             browser.get(website.main_page_url)
             return browser
@@ -232,31 +91,10 @@ def start_browser_and_fetch(website, args):
     website.access_successful = False
     return None
 
-def start_new_browser_and_fetch(website, args, ignore_robots_txt=False, add_shared_cookie=False, headful=False, override_cmp=False, monitor_postmessages=False, watch_requests=False, get_euconsent=False, probe_cmp_postmessage=False, bypass_robots_txt=False):
-    # Call start_browser_and_fetch with different arguments than args
-    args2 = copy.deepcopy(args)
-    if ignore_robots_txt:
-        args2.ignore_robots_txt = True
-    if bypass_robots_txt:
-        args2.bypass_robots_txt = True
-    if add_shared_cookie:
-        args2.add_shared_cookie = True
-    if headful or override_cmp or monitor_postmessages or watch_requests or get_euconsent or probe_cmp_postmessage:
-        # We can't run extensions with headless chrome
-        # see https://sqa.stackexchange.com/questions/32611/selenium-chromedriver-headless-chrome-failed-to-wait-for-extension-backgro?rq=1
-        args2.headful = True
-    if override_cmp:
-        args2.override_cmp = True
-    if monitor_postmessages:
-        args2.monitor_postmessages = True
-    if watch_requests:
-        args2.watch_requests = True
-    if get_euconsent:
-        args2.get_euconsent = True
-    if probe_cmp_postmessage:
-        args2.probe_cmp_postmessage = True
-    browser = start_browser_and_fetch(website, args2)
-    return browser
+def start_new_browser_and_fetch(website, args):
+    # Each session gets a new browser with a fresh profile. The browser extensions of the
+    # original Cookinspect are gone (Manifest V2); their channels move to WebDriver BiDi in phase 3.
+    return start_browser_and_fetch(website, args)
 
 def get_website(domain, db):
     website = db.query(Website).filter_by(domain=domain).scalar()
@@ -338,7 +176,7 @@ def full_violations_check(website):
         semi_automatic_violations_check(website)
 
 def test_if_website_uses_cmp_only(website):
-    browser = start_new_browser_and_fetch(website, args, bypass_robots_txt=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     if website.access_successful == False:
@@ -361,7 +199,7 @@ def automatic_violations_check_full(website):
     # Corresponds to the version of automatic_violations_check() used for the
     # paper's crawl. Includes many tests that are useless for the regular
     # crawls, so this is removed from the default
-    browser = start_new_browser_and_fetch(website, args, probe_cmp_postmessage=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     if website.access_successful == False:
@@ -389,7 +227,7 @@ def automatic_violations_check_full(website):
     automatic_violations_check_no_extension(browser, website, args) # automatic, without extension
     quit_properly(browser)
     print("Checking shared consent...")
-    browser = start_new_browser_and_fetch(website, args, ignore_robots_txt=True, add_shared_cookie=True, headful=True, probe_cmp_postmessage=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     if uses_cmp:
@@ -398,7 +236,7 @@ def automatic_violations_check_full(website):
         check_violation_shared_consent(browser, website, args, v2=True)
     quit_properly(browser)
     print("Checking vendors...")
-    browser = start_new_browser_and_fetch(website, args, ignore_robots_txt=True, override_cmp=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     # we need to gather domains verifying consent through direct call for checking
@@ -406,7 +244,7 @@ def automatic_violations_check_full(website):
     domains_direct = vendors_violations_check(browser, website, args) # automatic, with override_cmp extension
     quit_properly(browser)
     print("Checking vendors (postMessages, GET and POST data)...")
-    browser = start_new_browser_and_fetch(website, args, ignore_robots_txt=True, monitor_postmessages=True, watch_requests=True, get_euconsent=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     website.current_state = BEFORE_ACTION
@@ -417,7 +255,7 @@ def automatic_violations_check_full(website):
 
 def automatic_violations_check(website):
     website.current_state = BEFORE_ACTION
-    browser = start_new_browser_and_fetch(website, args, probe_cmp_postmessage=True, monitor_postmessages=True, watch_requests=True, get_euconsent=True, bypass_robots_txt=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     if website.access_successful == False:
@@ -456,12 +294,12 @@ def automatic_violations_check(website):
     return True
 
 def semi_automatic_violations_check(website):
-    if website.robot_txt_ban and not args.ignore_robots_txt:
-        print("Access to this website was previously refused (robots.txt).")
+    # robots.txt is checked again in this run when the browser starts (start_browser_and_fetch)
+    if not robots_txt_allows(website):
         return
     website.semi_automatic_done = True
     print("Checking other violations. Please refuse all consent on banner in the browser that's going to open, then press enter on this script. If the banner presents no option to refuse consent, accept all, then enter 'n'. If at least one of the purposes are pre-ticked, enter 'p'. If no banner appears, enter 'b'. If banner is broken (e.g. you can't click on the accept button), enter 'x'.")
-    browser = start_new_browser_and_fetch(website, args, ignore_robots_txt=True, monitor_postmessages=True, watch_requests=True, get_euconsent=True, probe_cmp_postmessage=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     #os.system("mpv ding.mp3 >/dev/null 2>/dev/null &")
@@ -488,7 +326,7 @@ def semi_automatic_violations_check(website):
     # Test case: kayak.fr (todo: find a better one: still does not work the second time)
     print("Please validate tracking this time.")
     website.current_state = AFTER_ACCEPTANCE
-    browser = start_new_browser_and_fetch(website, args, ignore_robots_txt=True, monitor_postmessages=True, watch_requests=True, get_euconsent=True, probe_cmp_postmessage=True)
+    browser = start_new_browser_and_fetch(website, args)
     if browser is None:
         return False
     #os.system("mpv msn.mp3 >/dev/null 2>/dev/null &")
@@ -532,7 +370,7 @@ def dump_website(website):
         return
     if website.robot_txt_ban:
         print("Access refused by robots.txt.")
-        if not args.ignore_robots_txt and not args.dump:
+        if not args.dump:
             return
     if website.iab_banner == False and website.tcfv2 == False:
         print("Website does not use a TCF-related banner.")

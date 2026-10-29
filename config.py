@@ -15,6 +15,19 @@ HEADLESS = False                        # visible window in all modes (also -a)
 ACCEPT_LANGUAGES = "de-DE,de"           # German users
 WINDOW_SIZE = (1366, 768)               # as in Cookinspect (most common display in 2019)
 
+# Safe environment: crawls run under their own macOS user, with a fresh browser profile per
+# session and no logins. When CRAWL_USER is set, the scripts refuse to run under any other user.
+CRAWL_USER = None                       # e.g. "crawler"; None = not checked (a warning is printed)
+
+# HTTP requests outside the browser (robots.txt, reachability) use the user agent of the browser,
+# so that both see the same site. The browser's own user agent is not changed (no tricks against
+# bot detection); run_metadata.py compares the two and records a mismatch.
+HTTP_USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36")
+HTTP_TIMEOUT = 10                       # seconds, as Cookinspect for robots.txt
+ROBOTS_USER_AGENT = "*"                 # robots.txt rules are evaluated for this agent
+PAUSE_BETWEEN_DOMAINS = 2               # seconds of pause between two domains
+
 # Waiting times and timeouts from Matte et al. (2020), Section IV-A and V
 PAGE_LOAD_TIMEOUT = 10                  # seconds per attempt
 MAX_TRIES_TIMEOUT = 3                   # attempts before a site counts as unreachable
