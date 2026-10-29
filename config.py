@@ -25,4 +25,5 @@ USERACTIONCOMPLETE_TIMEOUT = 10         # seconds to wait for eventStatus userac
 
 # Semi-automatic mode
 MAX_BANNER_RELOADS = 3                  # reload up to 3 times when no banner appears (Appendix D)
-SEMI_AUTOMATIC_LIMIT = None             # upper bound N of sites for the semi-automatic part (None = all)
+SEMI_AUTOMATIC_LIMIT = None             # optional upper bound of sites for the semi-automatic part, for tests;
+                                        # None (default) = all TCF sites of the selected domains, as Matte did

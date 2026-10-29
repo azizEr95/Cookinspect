@@ -36,12 +36,12 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Die ersten N Domains mit Endung .de (N konfigurierbar, Standard 1000), analog zu Matte (1000 pro TLD).
 - Vorfilter mit Trichter: Domains → erreichbar und von robots.txt erlaubt → mit TCF. Vergleichswert Matte für .de (Tab. II): 1000 Domains → 881 erreichbar → 56 mit TCF-Banner (6,4 %).
 - TCF-Erkennung (analog Matte, S. 5): Nach dem Laden und weiteren 3 s ist `__tcfapi` vorhanden und `ping` antwortet.
-- Obergrenze N für den halbautomatischen Teil ist ein Parameter (wird mit dem Betreuer festgelegt).
+- Halbautomatischer Teil: wie bei Matte alle TCF-Seiten aus den ausgewählten Domains (Matte V-B: alle 560 TCF-Seiten der ausgewählten TLDs, keine feste Zahl). Der Parameter für eine Obergrenze (`SEMI_AUTOMATIC_LIMIT`) bleibt für Tests drin, ist standardmäßig aber aus.
 
 ## Ablauf
 
 - Automatischer Modus: misst V1 und die Weitergabe an Dritte vor jeder Interaktion, in zwei frischen Sitzungen.
-- Halbautomatischer Modus (V2–V4, wie bei Matte): Ein Mensch klickt, das Werkzeug liest mit. Kein automatisches Ablehnen.
+- Halbautomatischer Modus (V2–V4, wie bei Matte): Ein Mensch klickt, das Werkzeug liest mit. Im Messcode wird weder automatisch abgelehnt noch akzeptiert. Das Klicken aus Testskripten (z. B. `spikes/`) darf nicht in den Messcode.
   1. Seite laden. Erscheint kein Banner, bis zu 3-mal neu laden (Anhang D).
   2. Snapshot „vorher“.
   3. Ablehnen nach Anhang D (Regeln unten). Steuercodes: `n` keine Ablehnmöglichkeit, `p` vorausgewählt, `b` kein Banner, `x` Banner kaputt, `w` Cookiewall; dazu die Ebene des Ablehnens. Bei `n` wird direkt akzeptiert (Anhang D); eine Ablehnen-Sitzung gibt es dann nicht.
@@ -49,7 +49,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
   5. Nach 3 Sekunden neu laden und erneut auslesen.
   6. Neue Sitzung, dieselben Schritte mit Akzeptieren.
 - Pro Phase (vorher, nach Ablehnen, nach Reload, nach Akzeptieren) werden alle Zweck- und Vendor-IDs gespeichert, nicht nur Bool-Flags.
-- Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
+- Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert; niedrige Priorität; die Quote „nicht messbar“ pro Phase – vorher, nach Ablehnen, nach Akzeptieren – erscheint in der Auswertung); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
 - Kein Shared Cookie / consensu.org mehr (gibt es in v2 nicht).
 
 ### Regeln für das Ablehnen (Anhang D)
@@ -75,7 +75,9 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560).
 - **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
 - **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
-- **Cookiewalls** (Pay-or-OK): Wie sie ausgewertet werden (eigene Kategorie oder V2), legen wir später fest. Bis dahin markiert der Code `w` sie nur, damit nichts verloren geht.
+- **Cookiewalls** (Pay-or-OK): Ausgewertet wird erst, wenn die Daten des automatischen Crawls vorliegen. Davon hängt auch ab, ob die Forschungsfrage um Cookiewalls erweitert wird. Bis dahin:
+  - Der automatische Modus erkennt und markiert Cookiewalls, der halbautomatische Modus markiert sie mit `w`.
+  - Die Verstoß-Logik verdrahtet `w` nicht fest. Der Umgang ist konfigurierbar (z. B. „ausschließen“ oder „als V2 zählen“); bis zur Entscheidung werden beide Varianten ausgewiesen.
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
 
