@@ -44,7 +44,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Halbautomatischer Modus (V2–V4, wie bei Matte): Ein Mensch klickt, das Werkzeug liest mit. Kein automatisches Ablehnen.
   1. Seite laden. Erscheint kein Banner, bis zu 3-mal neu laden (Anhang D).
   2. Snapshot „vorher“.
-  3. Ablehnen nach Anhang D (Regeln unten). Steuercodes: `n` keine Ablehnmöglichkeit, `p` vorausgewählt, `b` kein Banner, `x` Banner kaputt, `w` Cookiewall; dazu die Ebene des Ablehnens. Bei `n` wird direkt akzeptiert (Anhang D). Bei `n` und `w` gibt es keine Ablehnen-Sitzung, die Akzeptieren-Sitzung läuft wie sonst.
+  3. Ablehnen nach Anhang D (Regeln unten). Steuercodes: `n` keine Ablehnmöglichkeit, `p` vorausgewählt, `b` kein Banner, `x` Banner kaputt, `w` Cookiewall; dazu die Ebene des Ablehnens. Bei `n` wird direkt akzeptiert (Anhang D); eine Ablehnen-Sitzung gibt es dann nicht.
   4. Signal nach `eventStatus = useractioncomplete` auslesen. Kommt das Ereignis nicht innerhalb der Zeitgrenze `USERACTIONCOMPLETE_TIMEOUT` (`config.py`), wird „kein useractioncomplete“ gespeichert und trotzdem ausgelesen, klar markiert.
   5. Nach 3 Sekunden neu laden und erneut auslesen.
   6. Neue Sitzung, dieselben Schritte mit Akzeptieren.
@@ -72,10 +72,10 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
   - Matte-Variante: streng **und** ≥ 1 Vendor-Consent (entspricht Mattes „alle 5 Zwecke“, da v1.1 nur 5 Zwecke hatte).
   - locker: Nach Ablehnen ist ≥ 1 Zweck in `purpose.consents` gesetzt.
   - Nur als Zusatzzahl: nach Ablehnen alle Zwecke {1…10} bzw. {1…11} gesetzt.
-- **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b`, `x` oder `w` fallen heraus (Matte S. 9: 508 von 560).
+- **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560).
 - **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
 - **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
-- **Cookiewalls** (Pay-or-OK, Code `w`) als eigene Kategorie berichten: nichts ablehnen, keine Ablehnen-Sitzung, aber eine Akzeptieren-Sitzung wie sonst. V1 wird normal gemessen. Für den Vergleich mit Matte zusätzlich V2 ausweisen, wenn Cookiewalls als „keine Ablehnmöglichkeit“ zählen (Matte wertete in Anhang D healthline.com, das nach dem Ablehnen den Zugang verweigerte, als „No way to opt out“).
+- **Cookiewalls** (Pay-or-OK) als eigene Kategorie: nichts ablehnen, V1 trotzdem messen.
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
 
@@ -89,6 +89,5 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Abweichungen vom Paper und vom ursprünglichen Cookinspect stehen in `docs/abweichungen.md`. Bisher bekannt:
   - V1 aus zwei Sitzungen statt aus einer.
   - Standort Berlin statt Frankreich.
-  - Cookiewalls als eigene Kategorie statt als V2.
   - Die Seiten werden auf zwei Personen aufgeteilt; bei Matte machte eine Person den ganzen halbautomatischen Crawl.
 - Die README erklärt, wie man alles ausführt.
