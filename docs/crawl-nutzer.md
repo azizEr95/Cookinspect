@@ -120,3 +120,13 @@ Die Ergebnisse liegen in `~/Cookinspect/data/` des Crawl-Nutzers. Für die Auswe
 mkdir -p /Users/Shared/cookinspect-data
 cp -R ~/Cookinspect/data/prefilter-vorab-* /Users/Shared/cookinspect-data/
 ```
+
+Alle Ergebnisse stehen außerdem in der Datenbank `~/Cookinspect/data/cookinspect.sqlite`, eine Datei pro Person und Mac. Testläufe stehen dort auch, markiert mit `purpose = 'test'`. Wer eine leere Datenbank für die Messung will, benennt die Datei vorher um. Löschen von Zeilen ist im Schema gesperrt.
+
+Zum Zusammenführen kopiert jede Person ihre Datei nach `/Users/Shared` (z. B. `cookinspect-ae.sqlite`); dann auf einem Mac:
+
+```sh
+venv/bin/python merge_databases.py data/merged.sqlite /Users/Shared/cookinspect-ae.sqlite /Users/Shared/cookinspect-xy.sqlite
+```
+
+Das Skript fügt nur hinzu. Zweimal zusammenführen ändert nichts; abweichende Zeilen mit gleichem Schlüssel meldet es.

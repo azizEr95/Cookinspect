@@ -13,9 +13,18 @@ import config
 from consent_lists import check_cmp_id, gvl_check, load_gvl
 
 DECODER_CLI = config.DECODE_DIR / "cli.mjs"
+DECODER_PACKAGE = "@iabtechlabtcf/core"
 FORBIDDEN_LI_PURPOSES = (3, 4, 5, 6)              # no legitimate interest since TCF v2.2
 MIN_VALID_POLICY_VERSION = 4                      # TCF v2.2; smaller ones invalid since 30.09.2023
 DISCLOSED_VENDORS_MANDATORY_FROM = datetime(2026, 3, 1, tzinfo=timezone.utc)   # TCF v2.3, see below
+
+
+def decoder_version():
+    """Installed version of the TC string decoder (pinned in decode/package.json)."""
+    package_json = config.DECODE_DIR / "node_modules" / DECODER_PACKAGE / "package.json"
+    if not package_json.exists():
+        return None
+    return json.loads(package_json.read_text())["version"]
 
 
 def decode_tc_strings(tc_strings):

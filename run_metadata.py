@@ -16,9 +16,9 @@ from datetime import datetime, timezone
 import config
 from browser import browser_versions, start_chrome
 from consent_lists import latest_cmp_list, latest_gvl
+from decoder import DECODER_PACKAGE, decoder_version
 
 IP_COUNTRY_URL = "https://ipinfo.io/country"
-DECODER_PACKAGE = "@iabtechlabtcf/core"
 
 
 def git_commit():
@@ -43,14 +43,6 @@ def package_version(name):
         return importlib.metadata.version(name)
     except importlib.metadata.PackageNotFoundError:
         return None
-
-
-def decoder_version():
-    """Installed version of the TC string decoder (pinned in decode/package.json)."""
-    package_json = config.DECODE_DIR / "node_modules" / DECODER_PACKAGE / "package.json"
-    if not package_json.exists():
-        return None
-    return json.loads(package_json.read_text())["version"]
 
 
 def node_version():
@@ -125,6 +117,7 @@ def new_metadata(mode, test_run, **extra):
         "node_version": node_version(),
         "decoder": {"package": DECODER_PACKAGE, "version": decoder_version()},
         "consent_lists": consent_lists_metadata(),
+        "hostname": platform.node(),
         "platform": platform.platform(),
         "machine": platform.machine(),
         "config": settings_from_config(),

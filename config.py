@@ -5,6 +5,7 @@ from pathlib import Path
 REPO_DIR = Path(__file__).resolve().parent
 DATA_DIR = REPO_DIR / "data"            # crawl results, downloaded GVL and CMP list (not committed)
 DECODE_DIR = REPO_DIR / "decode"        # Node project with @iabtechlabtcf/core (version pinned there)
+DATABASE_PATH = DATA_DIR / "cookinspect.sqlite"   # one file per person and Mac; merge_databases.py merges them
 
 # Browser: Chrome for Testing, downloaded by Selenium Manager into ~/.cache/selenium.
 # Pinned so that every run uses the same browser. The browser must always be started with

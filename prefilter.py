@@ -27,8 +27,10 @@ Two full runs are planned (docs/entscheidungen.md, E3): "vorab" now, for the num
 sites, and "messung" right before the measurement; only the second one counts in the paper and
 its tcf_sites.csv is the input of the measurement.
 
-Writes into data/prefilter-<purpose>-<timestamp>/: run_metadata.json, prefilter.csv (one row per domain),
-funnel.json and funnel.md, and tcf_sites.csv (the input of the automatic and semi-automatic modes).
+Writes every result into the database (config.DATABASE_PATH, tables run and prefilter_result) and,
+as export, into data/prefilter-<purpose>-<timestamp>/: run_metadata.json, prefilter.csv (one row
+per domain), funnel.json and funnel.md, and tcf_sites.csv (the input of the automatic and
+semi-automatic modes).
 """
 import argparse
 import csv
@@ -39,6 +41,7 @@ from datetime import datetime, timezone
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import config
+import database
 from browser import start_chrome
 from robots import decisions, find_robots
 from run_list import list_info
@@ -307,7 +310,10 @@ def main():
     run_dir = config.DATA_DIR / f"prefilter-{purpose}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
     run_dir.mkdir(parents=True)
     write_metadata(metadata, run_dir)
-    print(f"Run directory: {run_dir}")
+    conn = database.connect()
+    run_id = database.insert_run(conn, metadata)
+    tranco_list_id = (list_info(args.list) or {}).get("tranco_list_id")
+    print(f"Run directory: {run_dir}\nDatabase: {config.DATABASE_PATH} (run {run_id})")
 
     rows = []
     with open(run_dir / "prefilter.csv", "w", newline="") as f:
@@ -316,6 +322,7 @@ def main():
         for number, (rank, domain) in enumerate(domains, start=1):
             row = check_domain(rank, domain)
             rows.append(row)
+            database.insert_prefilter_result(conn, run_id, row, tranco_list_id)
             writer.writerow(row)
             f.flush()
             print(f"[{number}/{len(domains)}] {domain}: robots {row['robots_status']} "
@@ -334,6 +341,7 @@ def main():
     result = funnel(rows)
     metadata["finished_at"] = datetime.now(timezone.utc).isoformat()
     write_metadata(metadata, run_dir)
+    database.finish_run(conn, run_id)
     (run_dir / "funnel.json").write_text(json.dumps(result, indent=2))
     table = funnel_table(result)
     (run_dir / "funnel.md").write_text(table + "\n")
