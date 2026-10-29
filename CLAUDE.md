@@ -4,9 +4,9 @@
 
 Wir sind ein 2er-Team (Master Medieninformatik, BHT Berlin, Modul „Wissenschaftliches Arbeiten“). Wir messen die Studie von Matte, Bielova & Santos (2020) „Do Cookie Banners Respect my Choice?“ (IEEE S&P 2020, arXiv:1911.09964) für deutsche Websites nach. Das Ergebnis ist ein Short Paper (4–6 Seiten, ACM).
 
-Matte nutzte TCF v1.1 (`__cmp()`, 5 Zwecke) und crawlte 2019 von Frankreich aus. Heute gilt TCF v2.2 (`__tcfapi`, 11 Zwecke). Seit v2.2 ist berechtigtes Interesse für die Zwecke 3–6 nicht mehr erlaubt.
+Matte nutzte TCF v1.1 (`__cmp()`, 5 Zwecke) und crawlte 2019 von Frankreich aus. Heute gilt TCF v2.3 (`__tcfapi`, 11 Zwecke), verbindlich seit dem 28.02.2026: Das Segment disclosedVendors ist Pflicht. TC-Strings, die vorher nach v2.2 ohne disclosedVendors erstellt wurden, bleiben gültig. Seit v2.2 ist berechtigtes Interesse für die Zwecke 3–6 nicht mehr erlaubt; daran hat v2.3 nichts geändert. Die `tcfPolicyVersion` im String gibt die Version der TCF-Policies an, nicht die technische TCF-Version (v2.2 → 4, Policies 5.0 seit 2024 → 5; siehe `docs/abweichungen.md`).
 
-Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matte 2020)** für TCF v2.2. In Texten und Doku heißt es so, nicht „Portierung“. Ausgangspunkt ist unser Fork azizEr95/Cookinspect (Stand 948a85f).
+Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matte 2020)** für TCF v2.2/v2.3. In Texten und Doku heißt es so, nicht „Portierung“. Ausgangspunkt ist unser Fork azizEr95/Cookinspect (Stand 948a85f).
 
 - Das Paper von Matte liegt unter `docs/` (nur lokal, wird nicht committet). Die Methode steht in Abschnitt IV und V, der Ablauf der manuellen Klicks in Anhang D, die Gegenprüfung in Abschnitt V-C.
 - TCF-Spezifikation: <https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework>
@@ -24,7 +24,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 
 ## Technik
 
-- Läuft nativ auf macOS (Apple Silicon, arm64), Python 3.12, Selenium 4, Chrome for Testing in fester Version (`config.py`). Keine Browser-Erweiterungen; die Daten kommen über das Chrome DevTools Protocol (CDP) und Selenium.
+- Läuft nativ auf macOS (Apple Silicon, arm64), Python 3.12, Selenium 4, Chrome for Testing in fester Version (`config.py`). Keine Browser-Erweiterungen; die Daten kommen über WebDriver BiDi und Selenium.
 - Sicheres Umfeld: eigener macOS-Nutzer für die Crawls, frisches Browserprofil pro Sitzung, keine Logins.
 - Sichtbares Browserfenster in allen Modi, auch beim automatischen Crawl.
 - Datenbank: SQLite mit `sqlite3` (ohne SQLAlchemy). Dekodierung mit `@iabtechlabtcf/core` (Version in `decode/package.json` festgelegt).
