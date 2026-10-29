@@ -41,7 +41,7 @@ Restaufwand geschätzt: ca. 32–48 h (7: 8–12, 8: 11–15, 9: 4–6, 10: 4–
 | `run_metadata.py` | Metadaten jedes Laufs; verweigert echte Läufe ohne `CRAWL_USER`, mit „dirty“ Git, falscher Chrome-Version, nicht `arm64`, IP-Land nicht `DE` |
 | `robots.py` | robots.txt: Protego (gecrawlt), urllib und Original-Cookinspect als Vergleich; Ausweichregeln HTTPS→HTTP, ohne www; 429 wie 5xx |
 | `page.py` | Laden mit 3 Versuchen, HTTP-Status der Hauptseite, Erkennung von Sperrseiten |
-| `prefilter.py` | Vorfilter mit Trichter; `--test` oder `--purpose vorab|messung`; schreibt Datenbank und `tcf_sites.csv` |
+| `prefilter.py` | Vorfilter mit Trichter; `--test` oder `--purpose vorab` bzw. `--purpose messung`; schreibt Datenbank und `tcf_sites.csv` |
 | `capture.py` | Kanäle ① Listener (Preload-Skript, `removeEventListener`), ② fremdes iframe, Cookies/localStorage, Requests (GET/POST, Formulare, OpenRTB); `mark()` + `wait_for_event(..., after=mark)` |
 | `decode/tcstring.mjs`, `decode/cli.mjs`, `decoder.py` | Decoder „TC-String rein, IDs als JSON raus“ (`@iabtechlabtcf/core` 1.5.22), Prüfungen pro String |
 | `consent_lists.py` | GVL nach `vendorListVersion` des Strings (v3/v2-Archiv), CMP-Liste pro Lauf, Prüfung der CMP-ID |

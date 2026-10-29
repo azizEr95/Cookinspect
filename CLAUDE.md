@@ -15,6 +15,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 ## Arbeitsweise
 
 - Vor jeder Änderung: Plan vorschlagen, Rückfragen stellen, auf Bestätigung warten.
+- Stand und Plan aller Phasen: `docs/plan.md`. Zu Beginn jeder Sitzung lesen und nach jeder Phase aktualisieren.
 - Arbeit auf dem Branch `tcf22-port`, kleine Commits pro Phase. Nichts pushen ohne Zustimmung.
 - Lesbarer Code ist wichtiger als effizienter Code.
 - Kein Code aus BannerClick oder OpenWPM. Unser eigener Code aus tcfmeasure darf als Vorlage dienen.
