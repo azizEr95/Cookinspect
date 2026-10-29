@@ -92,7 +92,7 @@ CREATE TABLE examination (
     started_at          TEXT NOT NULL,
     finished_at         TEXT,
     status              TEXT CHECK (status IN ('done', 'aborted', 'unreachable', 'robots_disallowed')),
-    cookiewall_detected INTEGER,                -- automatic mode (Phase 6)
+    cookiewall_suspected INTEGER,               -- automatic mode: HEURISTIC, suspected in at least one session
     cookiewall_reason   TEXT,
     note                TEXT,
     CHECK ((role = 'crosscheck') = (crosscheck_of IS NOT NULL)),
@@ -124,6 +124,15 @@ CREATE TABLE session (
     url                             TEXT NOT NULL,
     started_at                      TEXT NOT NULL,
     ended_at                        TEXT,
+    loaded                          INTEGER,        -- start page loaded (config.MAX_TRIES_TIMEOUT attempts)
+    load_attempts                   INTEGER,
+    load_errors                     TEXT,
+    final_url                       TEXT,
+    http_status                     INTEGER,        -- main document (BiDi)
+    blocked                         INTEGER,        -- block page detected (heuristic, page.detect_block)
+    block_reason                    TEXT,
+    cookiewall_suspected            INTEGER,        -- automatic mode: HEURISTIC (cookiewall.py), checked against w in Phase 8
+    cookiewall_reason               TEXT,
     banner_shown                    INTEGER,        -- NULL = not asked (automatic)
     banner_reloads                  INTEGER,        -- reloads until the banner appeared (at most 3)
     useractioncomplete_received     INTEGER,        -- 0 = marker "no useractioncomplete"; NULL = automatic

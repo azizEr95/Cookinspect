@@ -159,11 +159,11 @@ def insert_examination(conn, run_id, domain, url, role, operator=None, crosschec
     return examination_id
 
 
-def finish_examination(conn, examination_id, status, cookiewall_detected=None, cookiewall_reason=None, note=None):
+def finish_examination(conn, examination_id, status, cookiewall_suspected=None, cookiewall_reason=None, note=None):
     with conn:
-        conn.execute("UPDATE examination SET finished_at = ?, status = ?, cookiewall_detected = ?, "
+        conn.execute("UPDATE examination SET finished_at = ?, status = ?, cookiewall_suspected = ?, "
                      "cookiewall_reason = ?, note = ? WHERE id = ?",
-                     (now(), status, as_int(cookiewall_detected), cookiewall_reason, note, examination_id))
+                     (now(), status, as_int(cookiewall_suspected), cookiewall_reason, note, examination_id))
 
 
 def insert_label(conn, examination_id, operator, outcome, reject_level=None, settings_layer_available=None,
@@ -185,15 +185,25 @@ def insert_session(conn, examination_id, kind, url, number=1):
     return session_id
 
 
-def finish_session(conn, session_id, banner_shown=None, banner_reloads=None, useractioncomplete_received=None,
-                   useractioncomplete_wait_s=None, remove_listener=None):
+SESSION_CLOSING_FIELDS = ("loaded", "load_attempts", "load_errors", "final_url", "http_status", "blocked",
+                          "block_reason", "cookiewall_suspected", "cookiewall_reason", "banner_shown", "banner_reloads",
+                          "useractioncomplete_received", "useractioncomplete_wait_s", "remove_listener_json")
+SESSION_FLAGS = {"loaded", "blocked", "cookiewall_suspected", "banner_shown", "useractioncomplete_received"}
+
+
+def finish_session(conn, session_id, remove_listener=None, **fields):
+    """Sets the closing fields of a session (SESSION_CLOSING_FIELDS), e.g. loaded=True,
+    useractioncomplete_received=False (marker "no useractioncomplete")."""
+    unknown = set(fields) - set(SESSION_CLOSING_FIELDS)
+    if unknown:
+        raise ValueError(f"not a closing field of session: {sorted(unknown)}")
+    values = {name: as_int(value) if name in SESSION_FLAGS else value for name, value in fields.items()}
+    if remove_listener is not None:
+        values["remove_listener_json"] = json.dumps(remove_listener)
+    values["ended_at"] = now()
+    assignments = ", ".join(f"{name} = ?" for name in values)
     with conn:
-        conn.execute("UPDATE session SET ended_at = ?, banner_shown = ?, banner_reloads = ?, "
-                     "useractioncomplete_received = ?, useractioncomplete_wait_s = ?, remove_listener_json = ? "
-                     "WHERE id = ?",
-                     (now(), as_int(banner_shown), banner_reloads, as_int(useractioncomplete_received),
-                      useractioncomplete_wait_s, json.dumps(remove_listener) if remove_listener is not None else None,
-                      session_id))
+        conn.execute(f"UPDATE session SET {assignments} WHERE id = ?", [*values.values(), session_id])
 
 
 # --- TC strings

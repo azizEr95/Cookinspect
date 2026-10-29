@@ -95,3 +95,9 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 - Nur auswertbar für Strings **mit** disclosedVendors-Segment (v2.3-Strings). Bei v2.2-Strings ohne das Segment: „nicht auswertbar“, getrennt gezählt.
 - Daneben, wie bei Matte: Vendor-Consents für Vendoren, die in der GVL-Version des Strings nicht vorkommen oder gelöscht sind (`unknown_vendor_consents`, Phase 4). Nur auswertbar, wenn die GVL verfügbar ist.
 - Fehlt die GVL, entfallen nur diese GVL-abhängigen Zahlen. Alle Zweck- und Vendor-IDs kommen aus dem String selbst, deshalb fällt kein String aus V1–V4 heraus (Test `tests/test_decoder.py::test_without_gvl_all_ids_are_kept_and_only_gvl_checks_are_missing`).
+
+## E6 (2026-10-29, für Phase 8 vorgemerkt): Cookiewall-Heuristik gegen das manuelle `w`
+
+- Die Erkennung im automatischen Modus (`cookiewall.py`, `session.cookiewall_suspected`, `examination.cookiewall_suspected`) ist eine **Heuristik**. Sie wird in Ergebnissen immer so bezeichnet.
+- Phase 8 gleicht sie mit dem Code `w` der Personen ab, für alle Seiten, die in beiden Modi geprüft wurden: Vierfeldertafel (Heuristik ja/nein × `w` ja/nein), Übereinstimmung, Präzision und Trefferquote der Heuristik, dazu die Liste der Abweichungen mit dem Grund der Heuristik.
+- Maßgeblich für die Auswertung ist das manuelle `w`; die Heuristik dient der Einordnung der automatischen Zahlen und der Entscheidung, ob die Forschungsfrage erweitert wird.
