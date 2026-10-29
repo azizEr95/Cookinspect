@@ -26,12 +26,14 @@ HTTP_USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/
                    "(KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36")
 HTTP_TIMEOUT = 10                       # seconds, as Cookinspect for robots.txt
 ROBOTS_USER_AGENT = "*"                 # robots.txt rules are evaluated for this agent
-PAUSE_BETWEEN_DOMAINS = 2               # seconds of pause between two domains
+PAUSE_BETWEEN_DOMAINS = 2               # seconds of pause between two domains (run_list.py and prefilter.py);
+                                        # within a domain, requests follow one another as in Cookinspect
 
 # Waiting times and timeouts from Matte et al. (2020), Section IV-A and V
 PAGE_LOAD_TIMEOUT = 10                  # seconds per attempt
 MAX_TRIES_TIMEOUT = 3                   # attempts before a site counts as unreachable
 SLEEP_TIME_CMP_WAIT = 3                 # seconds after the load event before looking for the CMP
+TCF_PING_TIMEOUT = 3                    # seconds to wait for the answer to __tcfapi('ping') (prefilter)
 SLEEP_TIME_REFRESH = 3                  # seconds between the decision and the reload
 USERACTIONCOMPLETE_TIMEOUT = 10         # seconds to wait for eventStatus useractioncomplete;
                                         # afterwards "no useractioncomplete" is stored and the signal read anyway
