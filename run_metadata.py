@@ -101,10 +101,28 @@ def consent_lists_metadata():
     return lists
 
 
+def check_setup(metadata):
+    """A real crawl (not a test run) is refused when Chrome, chromedriver, the architecture or
+    the IP country do not match config. A test run only prints the differences."""
+    expected = {
+        "browser.browser_version": (metadata["browser"]["browser_version"], config.CHROME_VERSION),
+        "browser.chromedriver_version": (metadata["browser"]["chromedriver_version"], config.CHROME_VERSION),
+        "machine": (metadata["machine"], config.EXPECTED_MACHINE),
+        "ip_country": (metadata["ip_country"], config.EXPECTED_IP_COUNTRY),
+    }
+    problems = [f"{name} is {actual!r}, expected {wanted!r}" for name, (actual, wanted) in expected.items()
+                if actual != wanted]
+    if problems and not metadata["test_run"]:
+        raise SystemExit("Real crawl refused: " + "; ".join(problems))
+    for problem in problems:
+        print(f"Warning (test run): {problem}")
+    return not problems
+
+
 def new_metadata(mode, test_run, **extra):
-    """Checks the environment first, so that a refused run starts no browser."""
+    """Checks the environment first, so that a refused run starts no browser; then the setup."""
     environment = check_environment(test_run)
-    return {
+    metadata = {
         "mode": mode,
         "test_run": test_run,
         "started_at": datetime.now(timezone.utc).isoformat(),
@@ -123,6 +141,8 @@ def new_metadata(mode, test_run, **extra):
         "config": settings_from_config(),
         **extra,
     }
+    metadata["setup_as_expected"] = check_setup(metadata)
+    return metadata
 
 
 def write_metadata(metadata, output_dir):

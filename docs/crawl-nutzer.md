@@ -110,23 +110,47 @@ cd ~/Cookinspect
 caffeinate -dims venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose vorab
 ```
 
-Später entsprechend `--purpose messung` (docs/entscheidungen.md, E3). Ohne sauberen Git-Stand oder unter einem anderen Nutzer bricht das Skript vor dem ersten Request ab.
+Später entsprechend `--purpose messung` (docs/entscheidungen.md, E3). Ein echter Lauf bricht vor dem ersten Request ab, wenn eines nicht stimmt: Nutzer, sauberer Git-Stand, Chrome und chromedriver in der Version aus `config.py`, Architektur `arm64`, IP-Land `DE`.
 
-## 8. Ergebnisse weitergeben
+### Datenbanken: eine Datei pro Zweck
 
-Die Ergebnisse liegen in `~/Cookinspect/data/` des Crawl-Nutzers. Für die Auswertung nach `/Users/Shared` kopieren:
+Jeder Lauf schreibt in die Datenbank seines Zwecks, unter `~/Cookinspect/data/`:
+
+| Aufruf | Datei |
+|---|---|
+| `--test` | `test.sqlite` |
+| `--purpose vorab` | `vorab.sqlite` |
+| `--purpose messung` | `messung.sqlite` |
+
+Testläufe landen so nie in den Messdaten; Umbenennen ist nicht nötig. Löschen von Zeilen ist im Schema gesperrt.
+
+## 8. Ablauf mit zwei Personen an zwei Macs (Variante B)
+
+Jede Person arbeitet an ihrem eigenen Mac, mit eigenem Crawl-Nutzer (Abschnitte 1–6 auf beiden Macs).
+
+1. **Vorfilter-Messlauf nur auf einem Mac** (z. B. bei Person `ae`):
+   ```sh
+   caffeinate -dims venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose messung
+   ```
+   Ergebnis: `data/prefilter-messung-<Zeit>/tcf_sites.csv`.
+2. **Aufteilung der Seiten** auf demselben Mac:
+   ```sh
+   venv/bin/python split_sites.py data/prefilter-messung-<Zeit>/tcf_sites.csv ae xy
+   ```
+   Innerhalb jeder CMP werden die Seiten nach Rang abwechselnd verteilt. So sieht jede Person jede CMP, und die Aufteilung ist ohne Zufall reproduzierbar. Ergebnis: `site_assignment.csv` (wer prüft welche Seite zuerst) und `site_assignment.json` (Prüfsumme von `tcf_sites.csv`, Personen, Regel).
+3. **Weitergeben an die zweite Person:** `tcf_sites.csv`, `site_assignment.csv` und `site_assignment.json` aus diesem Ordner, z. B. per AirDrop oder USB-Stick. Die zweite Person legt sie in ihren eigenen Ordner `~/Cookinspect/data/prefilter-messung-<Zeit>/`, unter demselben Namen. Sie startet **keinen** eigenen Vorfilter-Messlauf.
+4. Beide messen auf ihrem eigenen Mac. Jede Person hat danach ihr eigenes `data/messung.sqlite`.
+5. **Zusammenführen:** Jede Person gibt ihre Datei weiter, z. B. als `messung-ae.sqlite` und `messung-xy.sqlite`. Dann auf einem Mac:
+   ```sh
+   venv/bin/python merge_databases.py data/messung-merged.sqlite messung-ae.sqlite messung-xy.sqlite
+   ```
+   Das Skript fügt nur hinzu. Zweimal zusammenführen ändert nichts; abweichende Zeilen mit gleichem Schlüssel meldet es. Enthalten beide Dateien einen Vorfilter-Messlauf, warnt es: dann wurde er versehentlich auf beiden Macs gestartet.
+
+## 9. Ergebnisse weitergeben
+
+Neben der Datenbank liegen die Exporte (CSV, `funnel.md`, Metadaten) in `~/Cookinspect/data/` des Crawl-Nutzers. Für die Auswertung nach `/Users/Shared` kopieren:
 
 ```sh
 mkdir -p /Users/Shared/cookinspect-data
 cp -R ~/Cookinspect/data/prefilter-vorab-* /Users/Shared/cookinspect-data/
 ```
-
-Alle Ergebnisse stehen außerdem in der Datenbank `~/Cookinspect/data/cookinspect.sqlite`, eine Datei pro Person und Mac. Testläufe stehen dort auch, markiert mit `purpose = 'test'`. Wer eine leere Datenbank für die Messung will, benennt die Datei vorher um. Löschen von Zeilen ist im Schema gesperrt.
-
-Zum Zusammenführen kopiert jede Person ihre Datei nach `/Users/Shared` (z. B. `cookinspect-ae.sqlite`); dann auf einem Mac:
-
-```sh
-venv/bin/python merge_databases.py data/merged.sqlite /Users/Shared/cookinspect-ae.sqlite /Users/Shared/cookinspect-xy.sqlite
-```
-
-Das Skript fügt nur hinzu. Zweimal zusammenführen ändert nichts; abweichende Zeilen mit gleichem Schlüssel meldet es.

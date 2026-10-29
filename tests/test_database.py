@@ -239,3 +239,29 @@ def test_merge_two_databases(tmp_path):
     merged = database.connect(str(target))
     assert merged.execute("SELECT count(*) FROM session").fetchone()[0] == 4
     assert sorted(r[0] for r in merged.execute("SELECT operator FROM run")) == ["ae", "xy"]
+
+
+def test_merge_reports_two_prefilter_measurement_runs(tmp_path):
+    files = []
+    for operator in ("ae", "xy"):
+        path = tmp_path / f"{operator}.sqlite"
+        conn = database.connect(str(path))
+        database.insert_run(conn, {**METADATA, "mode": "prefilter", "purpose": "messung", "test_run": False,
+                                   "hostname": f"mac-{operator}"})
+        conn.close()
+        files.append(path)
+    target = tmp_path / "merged.sqlite"
+    merge_databases.merge(str(target), str(files[0]))
+    assert len(merge_databases.prefilter_measurement_runs(str(target))) == 1
+    merge_databases.merge(str(target), str(files[1]))
+    assert [run[1] for run in merge_databases.prefilter_measurement_runs(str(target))] == ["mac-ae", "mac-xy"]
+
+
+def test_split_sites_alternates_within_each_cmp():
+    from split_sites import split
+    sites = [{"rank": r, "domain": d, "url": f"https://www.{d}", "cmp_id": c}
+             for r, d, c in [("1", "a.de", "6"), ("2", "b.de", "6"), ("3", "c.de", "345"), ("4", "d.de", "6"),
+                             ("5", "e.de", "345"), ("6", "f.de", "")]]
+    assigned = {s["domain"]: s["first_operator"] for s in split(sites, ["ae", "xy"])}
+    # cmp '' first (f), then 6 (a, b, d), then 345 (c, e), in turn
+    assert assigned == {"f.de": "ae", "a.de": "xy", "b.de": "ae", "d.de": "xy", "c.de": "ae", "e.de": "xy"}

@@ -1,5 +1,6 @@
 """Block detection and funnel of the prefilter (offline)."""
-from prefilter import detect_block, funnel, read_ranked_domains
+from page import detect_block, read_ranked_domains
+from prefilter import funnel
 
 
 def test_block_by_status():

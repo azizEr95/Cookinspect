@@ -27,7 +27,8 @@ Two full runs are planned (docs/entscheidungen.md, E3): "vorab" now, for the num
 sites, and "messung" right before the measurement; only the second one counts in the paper and
 its tcf_sites.csv is the input of the measurement.
 
-Writes every result into the database (config.DATABASE_PATH, tables run and prefilter_result) and,
+Writes every result into the database of its purpose (config.database_path: data/test.sqlite,
+data/vorab.sqlite or data/messung.sqlite; tables run and prefilter_result) and,
 as export, into data/prefilter-<purpose>-<timestamp>/: run_metadata.json, prefilter.csv (one row
 per domain), funnel.json and funnel.md, and tcf_sites.csv (the input of the automatic and
 semi-automatic modes).
@@ -38,11 +39,12 @@ import json
 import time
 from datetime import datetime, timezone
 
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import WebDriverException
 
 import config
 import database
 from browser import start_chrome
+from page import detect_block, load_page, read_ranked_domains, watch_main_document
 from robots import decisions, find_robots
 from run_list import list_info
 from run_metadata import new_metadata, write_metadata
@@ -74,27 +76,6 @@ try {
 }
 """
 
-# Signs of a block page (bot detection, challenge, access denied). A heuristic: hits are reported,
-# not hidden, and can be checked by hand in prefilter.csv. Searched in the title and the beginning
-# of the visible text (BLOCK_MARKERS) and in the HTML (BLOCK_HTML_MARKERS: challenge pages of bot
-# managers, which often answer with status 200). Only markers that appear on the challenge page
-# itself, not on normal pages protected by the same service (e.g. not Cloudflare's
-# /cdn-cgi/challenge-platform/ script, which many normal pages load).
-BLOCK_STATUS = (401, 403, 429)
-BLOCK_HTML_MARKERS = {
-    "sec-if-cpt-container": "Akamai Bot Manager",      # e.g. mobile.de, 2026-10-29
-    "cf_chl_opt": "Cloudflare challenge",
-    "captcha-delivery.com": "DataDome",
-    "px-captcha": "PerimeterX/HUMAN",
-    "incapsula incident id": "Imperva/Incapsula",
-}
-BLOCK_MARKERS = (
-    "access denied", "zugriff verweigert", "request blocked", "you have been blocked",
-    "attention required", "just a moment", "checking your browser", "pardon our interruption",
-    "are you a robot", "bist du ein mensch", "sind sie ein mensch", "verify you are human",
-    "captcha", "403 forbidden", "error 1020",
-)
-
 CSV_FIELDS = [
     "rank", "domain", "checked_at",
     "main_page_url", "robots_status", "robots_error", "robots_attempts",
@@ -105,67 +86,6 @@ CSV_FIELDS = [
     "display_status", "gdpr_applies", "api_version", "tcf_policy_version", "gvl_version",
     "tcfapi_locator", "cmp_v1",
 ]
-
-
-def read_ranked_domains(path):
-    """(rank, domain) pairs from a CSV with rank,domain columns, or a plain list of domains."""
-    with open(path, newline="") as f:
-        first_line = f.readline()
-        f.seek(0)
-        if "domain" in first_line.strip().split(","):
-            return [(row.get("rank") or str(number), row["domain"].strip())
-                    for number, row in enumerate(csv.DictReader(f), start=1) if row["domain"].strip()]
-        domains = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-        return [(str(number), domain) for number, domain in enumerate(domains, start=1)]
-
-
-def detect_block(http_status, title, text, html=""):
-    """Reason why the page looks like a block page, or None."""
-    if http_status in BLOCK_STATUS:
-        return f"HTTP {http_status}"
-    haystack = f"{title or ''}\n{(text or '')[:2000]}".lower()
-    for marker in BLOCK_MARKERS:
-        if marker in haystack:
-            return f"text: {marker}"
-    html = (html or "")[:50000].lower()
-    for marker, service in BLOCK_HTML_MARKERS.items():
-        if marker in html:
-            return f"html: {service}"
-    if not (title or "").strip() and not (text or "").strip():
-        return "no title and no visible text"
-    return None
-
-
-def watch_main_document(driver):
-    """Records the HTTP status of the main document of every navigation in the top frame
-    (BiDi network.responseCompleted). Returns the list the statuses are appended to."""
-    top_context = driver.current_window_handle
-    responses = []
-
-    def field(value, name):   # Selenium passes dataclasses here, but sometimes plain dicts inside
-        return value.get(name) if isinstance(value, dict) else getattr(value, name, None)
-
-    def on_response(params):
-        if params.context == top_context and params.navigation:
-            responses.append({"url": field(params.response, "url"), "status": field(params.response, "status")})
-
-    driver.network.add_event_handler("response_completed", on_response)
-    return responses
-
-
-def load_page(driver, url):
-    """Loads url with up to config.MAX_TRIES_TIMEOUT attempts, as Cookinspect did.
-    Returns (loaded, attempts, errors)."""
-    errors = []
-    for attempt in range(1, config.MAX_TRIES_TIMEOUT + 1):
-        try:
-            driver.get(url)
-            return True, attempt, errors
-        except TimeoutException:
-            errors.append("timeout")
-        except WebDriverException as error:
-            errors.append(error.msg.splitlines()[0] if error.msg else type(error).__name__)
-    return False, config.MAX_TRIES_TIMEOUT, errors
 
 
 def check_page(url):
@@ -310,10 +230,10 @@ def main():
     run_dir = config.DATA_DIR / f"prefilter-{purpose}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
     run_dir.mkdir(parents=True)
     write_metadata(metadata, run_dir)
-    conn = database.connect()
+    conn = database.connect(config.database_path(purpose))
     run_id = database.insert_run(conn, metadata)
     tranco_list_id = (list_info(args.list) or {}).get("tranco_list_id")
-    print(f"Run directory: {run_dir}\nDatabase: {config.DATABASE_PATH} (run {run_id})")
+    print(f"Run directory: {run_dir}\nDatabase: {config.database_path(purpose)} (run {run_id})")
 
     rows = []
     with open(run_dir / "prefilter.csv", "w", newline="") as f:

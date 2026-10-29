@@ -5,7 +5,13 @@ from pathlib import Path
 REPO_DIR = Path(__file__).resolve().parent
 DATA_DIR = REPO_DIR / "data"            # crawl results, downloaded GVL and CMP list (not committed)
 DECODE_DIR = REPO_DIR / "decode"        # Node project with @iabtechlabtcf/core (version pinned there)
-DATABASE_PATH = DATA_DIR / "cookinspect.sqlite"   # one file per person and Mac; merge_databases.py merges them
+# Database: one file per purpose (test, vorab, messung), so that test runs never end up in the
+# measurement data; one set of files per person and Mac, merged with merge_databases.py.
+PURPOSES = ("test", "vorab", "messung")
+
+
+def database_path(purpose):
+    return DATA_DIR / f"{purpose}.sqlite"
 
 # Browser: Chrome for Testing, downloaded by Selenium Manager into ~/.cache/selenium.
 # Pinned so that every run uses the same browser. The browser must always be started with
@@ -19,6 +25,9 @@ WINDOW_SIZE = (1366, 768)               # as in Cookinspect (most common display
 # Safe environment: crawls run under their own macOS user, with a fresh browser profile per
 # session and no logins. When CRAWL_USER is set, the scripts refuse to run under any other user.
 CRAWL_USER = None                       # e.g. "crawler"; None = not checked (a warning is printed)
+# A real crawl (not --test) is also refused when the machine or the location differ:
+EXPECTED_MACHINE = "arm64"              # Apple Silicon
+EXPECTED_IP_COUNTRY = "DE"              # measurement from Germany (Berlin)
 
 # HTTP requests outside the browser (robots.txt, reachability) use the user agent of the browser,
 # so that both see the same site. The browser's own user agent is not changed (no tricks against

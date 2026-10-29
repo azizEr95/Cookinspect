@@ -6,6 +6,9 @@ Rows are only added, never changed: measurement rows have UUIDs, websites are ke
 TC strings by their SHA-256. A row whose key is already in the target is kept as it is there.
 Merging the same file twice adds nothing. If such a row differs from the one in the target (e.g.
 the CMP check of a TC string against another CMP list snapshot), the script reports it.
+
+The prefilter measurement run happens on one Mac only (docs/crawl-nutzer.md). If the merged file
+contains more than one such run, the script warns: then both persons ran it.
 """
 import sys
 
@@ -40,6 +43,15 @@ def merge(target_path, source_path):
     return report
 
 
+def prefilter_measurement_runs(path):
+    """Prefilter runs with purpose messung in a database file: (id, hostname, started_at)."""
+    conn = connect(path)
+    runs = [tuple(r) for r in conn.execute("SELECT id, hostname, started_at FROM run "
+                                           "WHERE mode = 'prefilter' AND purpose = 'messung' ORDER BY started_at")]
+    conn.close()
+    return runs
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit(__doc__)
@@ -49,6 +61,12 @@ def main():
         for table, (added, differing) in merge(target, source).items():
             note = f", {differing} differ from the row already in the target (kept as in the target)" if differing else ""
             print(f"  {table}: {added} added{note}")
+    runs = prefilter_measurement_runs(target)
+    if len(runs) > 1:
+        print(f"\nWarning: {len(runs)} prefilter measurement runs (purpose messung) in {target}; "
+              "only one Mac should run it:")
+        for run_id, hostname, started_at in runs:
+            print(f"  {run_id} on {hostname}, started {started_at}")
 
 
 if __name__ == "__main__":

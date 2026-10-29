@@ -1,12 +1,13 @@
 """SQLite database (schema.sql) with the standard library sqlite3, no SQLAlchemy.
 
-Each person has their own file on their own Mac (config.DATABASE_PATH); merge_databases.py
-merges them. Rows get random UUIDs, websites are keyed by domain, TC strings by their SHA-256,
+The file depends on the purpose of the run (config.database_path: data/test.sqlite,
+data/vorab.sqlite, data/messung.sqlite). Each person has their own files on their own Mac;
+merge_databases.py merges them. Rows get random UUIDs, websites are keyed by domain, TC strings by their SHA-256,
 so that IDs never collide when merging.
 
 Every function takes an open connection and writes in one transaction (with conn:).
 
-    conn = connect()
+    conn = connect(config.database_path("messung"))
     run_id = insert_run(conn, metadata)
     ...
 """
@@ -49,10 +50,10 @@ def tc_string_key(tc_string):
     return hashlib.sha256(tc_string.encode()).hexdigest()
 
 
-def connect(path=None):
-    """Opens the database and creates the schema if the file is new."""
-    path = path or config.DATABASE_PATH
-    if path != ":memory:":
+def connect(path):
+    """Opens the database (a path, e.g. config.database_path(purpose), or ":memory:") and creates
+    the schema if the file is new."""
+    if str(path) != ":memory:":
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row

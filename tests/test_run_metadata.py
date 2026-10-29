@@ -48,3 +48,26 @@ def test_test_run_allowed_without_crawl_user_and_dirty(monkeypatch):
     clean(monkeypatch, dirty=True)
     monkeypatch.setattr(config, "CRAWL_USER", None)
     assert run_metadata.check_environment(test_run=True)["run_as_crawl_user"] is False
+
+
+def metadata(test_run, **changes):
+    values = {"test_run": test_run, "machine": "arm64", "ip_country": "DE",
+              "browser": {"browser_version": config.CHROME_VERSION, "chromedriver_version": config.CHROME_VERSION}}
+    values.update(changes)
+    return values
+
+
+def test_setup_as_expected():
+    assert run_metadata.check_setup(metadata(False)) is True
+
+
+@pytest.mark.parametrize("changes, message", [
+    ({"machine": "x86_64"}, "machine"),
+    ({"ip_country": "FR"}, "ip_country"),
+    ({"ip_country": None}, "ip_country"),
+    ({"browser": {"browser_version": "157.0.1.1", "chromedriver_version": config.CHROME_VERSION}}, "browser_version"),
+])
+def test_real_crawl_refused_when_setup_differs(changes, message):
+    with pytest.raises(SystemExit, match=message):
+        run_metadata.check_setup(metadata(False, **changes))
+    assert run_metadata.check_setup(metadata(True, **changes)) is False   # test run: only a warning
