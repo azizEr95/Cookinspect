@@ -44,3 +44,15 @@ Das Performance-Log mit `--disable-features=IsolateOrigins,site-per-process` erf
 - Die BiDi-Callbacks laufen in einem eigenen Thread; der Zugriff braucht eine Sperre (im Test vorhanden).
 - Der Zeitpunkt des BiDi-Preload-Skripts relativ zu den Seitenskripten ist lokal nur für die CDP-Variante gemessen (`pageSawInjection = true`); für BiDi wird das in den Tests von Phase 3 nachgeholt.
 - Nach unserem eigenen Reload kam auf wetteronline.de `tcloaded` zweimal (zwei Listener-Registrierungen aus zwei Dokumenten). Bei der Auswertung pro Phase muss das Dokument (Navigation) mitgespeichert werden.
+
+## E2 (Phase 1, 2026-10-29): Ereignisse der CMP sofort aus der Seite holen (Befund K3)
+
+**Befund (für den Methodenteil):** Manche CMPs laden die Seite direkt nach der Wahl der Nutzerin oder des Nutzers neu. Ein Messskript, das die `__tcfapi`-Ereignisse in der Seite sammelt (z. B. in einer Variable des `window`) und sie erst später ausliest, verliert dabei das Ereignis mit `eventStatus = useractioncomplete`. Nach dem Neuladen ist nur noch `tcloaded` aus dem neuen Dokument sichtbar. Beobachtet am 2026-10-29 auf wetteronline.de (CMP Sourcepoint) nach „akzeptieren & weiter“, mit Chrome for Testing 156.0.8078.73. Lokal mit einer Testseite nachgestellt, die 200 ms nach der Wahl neu lädt (`spikes/cdp/site/top.html?reload_after_choice=1`).
+
+**Folge:** Ein Signal „nach der Wahl“, das so erfasst wird, wäre in Wahrheit der Zustand nach einem Reload durch die CMP. Nach der Wahl und nach dem Reload ließen sich dann nicht unterscheiden. Ohne Gegenmaßnahme würde das Messfehler bei V4 verursachen (Snapshot „nach Ablehnen“).
+
+**Lösung:** Der Listener wird als WebDriver-BiDi-Preload-Skript (`script.addPreloadScript`) in jedes neue Dokument eingefügt und schickt jedes Ereignis sofort über einen Kanal (`script.message`) an das Messprogramm. Dort werden die Ereignisse mit Zeitpunkt und URL des Dokuments gespeichert. So bleibt `useractioncomplete` auch dann erhalten, wenn die Seite unmittelbar danach neu lädt. Belegt lokal und auf wetteronline.de: Reihenfolge `cmpuishown` → `useractioncomplete` → `tcloaded` (`spikes/cdp/spike_k3.py`).
+
+**Vorschlag für den Methodenteil:** „Da einige CMPs die Seite unmittelbar nach der Entscheidung neu laden, übermittelt unser Listener jedes Ereignis der TCF-API sofort an das Messprogramm, statt es in der Seite zwischenzuspeichern. Ereignisse mit `eventStatus = useractioncomplete` gehen so auch bei einem Neuladen durch die CMP nicht verloren.“
+
+**Noch zu prüfen (Phase 3):** verschachtelte iframes, Requests von Service Workern, Zeitpunkt des Preload-Skripts relativ zu den Seitenskripten.
