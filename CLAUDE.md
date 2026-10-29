@@ -1,0 +1,93 @@
+# CLAUDE.md
+
+## Projektkontext
+
+Wir sind ein 2er-Team (Master Medieninformatik, BHT Berlin, Modul „Wissenschaftliches Arbeiten“). Wir messen die Studie von Matte, Bielova & Santos (2020) „Do Cookie Banners Respect my Choice?“ (IEEE S&P 2020, arXiv:1911.09964) für deutsche Websites nach. Das Ergebnis ist ein Short Paper (4–6 Seiten, ACM).
+
+Matte nutzte TCF v1.1 (`__cmp()`, 5 Zwecke) und crawlte 2019 von Frankreich aus. Heute gilt TCF v2.2 (`__tcfapi`, 11 Zwecke). Seit v2.2 ist berechtigtes Interesse für die Zwecke 3–6 nicht mehr erlaubt.
+
+Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matte 2020)** für TCF v2.2. In Texten und Doku heißt es so, nicht „Portierung“. Ausgangspunkt ist unser Fork azizEr95/Cookinspect (Stand 948a85f).
+
+- Das Paper von Matte liegt unter `docs/` (nur lokal, wird nicht committet). Die Methode steht in Abschnitt IV und V, der Ablauf der manuellen Klicks in Anhang D, die Gegenprüfung in Abschnitt V-C.
+- TCF-Spezifikation: <https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework>
+- Cookinspect hat keine Lizenzdatei. Vor einer Veröffentlichung klären wir die Lizenz mit Matte.
+
+## Arbeitsweise
+
+- Vor jeder Änderung: Plan vorschlagen, Rückfragen stellen, auf Bestätigung warten.
+- Arbeit auf dem Branch `tcf22-port`, kleine Commits pro Phase. Nichts pushen ohne Zustimmung.
+- Lesbarer Code ist wichtiger als effizienter Code.
+- Kein Code aus BannerClick oder OpenWPM. Unser eigener Code aus tcfmeasure darf als Vorlage dienen.
+- Keinen großen Crawl ohne Freigabe starten. Neue Funktionen zuerst an ca. 10 Websites testen.
+- robots.txt in **allen** Modi respektieren (Protego nach RFC 9309; zum Vergleich mit Matte die Entscheidung von `urllib.robotparser` als eigene Spalte). Pausen zwischen Anfragen einhalten.
+- Keine Tricks gegen Bot-Erkennung (z. B. kein Verstecken von `navigator.webdriver`). Sperren erkennen, zählen und in den Ergebnissen ausweisen.
+
+## Technik
+
+- Läuft nativ auf macOS (Apple Silicon, arm64), Python 3.12, Selenium 4, Chrome for Testing in fester Version (`config.py`). Keine Browser-Erweiterungen; die Daten kommen über das Chrome DevTools Protocol (CDP) und Selenium.
+- Sicheres Umfeld: eigener macOS-Nutzer für die Crawls, frisches Browserprofil pro Sitzung, keine Logins.
+- Sichtbares Browserfenster in allen Modi, auch beim automatischen Crawl.
+- Datenbank: SQLite mit `sqlite3` (ohne SQLAlchemy). Dekodierung mit `@iabtechlabtcf/core` (Version in `decode/package.json` festgelegt).
+- TC-Strings v1 (beginnen mit `B`) werden nur roh gespeichert und als v1 markiert. Die Version wird am String erkannt, nicht am Modus des Laufs.
+
+## Website-Auswahl
+
+- Rangliste: Tranco mit fester List-ID (wird mitgespeichert), derzeit GQ3LK.
+- Die ersten N Domains mit Endung .de (N konfigurierbar, Standard 1000), analog zu Matte (1000 pro TLD).
+- Vorfilter mit Trichter: Domains → erreichbar und von robots.txt erlaubt → mit TCF. Vergleichswert Matte für .de (Tab. II): 1000 Domains → 881 erreichbar → 56 mit TCF-Banner (6,4 %).
+- TCF-Erkennung (analog Matte, S. 5): Nach dem Laden und weiteren 3 s ist `__tcfapi` vorhanden und `ping` antwortet.
+- Obergrenze N für den halbautomatischen Teil ist ein Parameter (wird mit dem Betreuer festgelegt).
+
+## Ablauf
+
+- Automatischer Modus: misst V1 und die Weitergabe an Dritte vor jeder Interaktion, in zwei frischen Sitzungen.
+- Halbautomatischer Modus (V2–V4, wie bei Matte): Ein Mensch klickt, das Werkzeug liest mit. Kein automatisches Ablehnen.
+  1. Seite laden. Erscheint kein Banner, bis zu 3-mal neu laden (Anhang D).
+  2. Snapshot „vorher“.
+  3. Ablehnen nach Anhang D (Regeln unten). Steuercodes: `n` keine Ablehnmöglichkeit, `p` vorausgewählt, `b` kein Banner, `x` Banner kaputt, `w` Cookiewall; dazu die Ebene des Ablehnens. Bei `n` wird direkt akzeptiert (Anhang D); eine Ablehnen-Sitzung gibt es dann nicht.
+  4. Signal nach `eventStatus = useractioncomplete` auslesen. Kommt das Ereignis nicht innerhalb der Zeitgrenze `USERACTIONCOMPLETE_TIMEOUT` (`config.py`), wird „kein useractioncomplete“ gespeichert und trotzdem ausgelesen, klar markiert.
+  5. Nach 3 Sekunden neu laden und erneut auslesen.
+  6. Neue Sitzung, dieselben Schritte mit Akzeptieren.
+- Pro Phase (vorher, nach Ablehnen, nach Reload, nach Akzeptieren) werden alle Zweck- und Vendor-IDs gespeichert, nicht nur Bool-Flags.
+- Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
+- Kein Shared Cookie / consensu.org mehr (gibt es in v2 nicht).
+
+### Regeln für das Ablehnen (Anhang D)
+
+- Gibt es auf der 1. Ebene „Ablehnen“, direkt klicken. Sonst die Einstellungen (2. Ebene) öffnen und dort alle zweckbezogenen Optionen (Checkbox oder Schalter) abwählen, unabhängig von der Art (auch z. B. „funktionale Cookies“).
+- „Alle ablehnen“ klicken, auch wenn nichts angehakt ist.
+- Vendor-Optionen ignorieren.
+- Gibt es keine Einstellungen, nur einen Link zur Datenschutzerklärung: höchstens 10 s dort nach einer Ablehnmöglichkeit suchen, dann zurück zur Hauptseite.
+- Liegen die Optionen auf einer anderen Seite, nach dem Ablehnen zurück zur Hauptseite.
+- Das Banner immer schließen, und zwar mit der Schaltfläche, die am wenigsten nach Zustimmung klingt.
+- Cookiewall (Zustimmen oder bezahlen): nichts klicken, Code `w`.
+
+## Definitionen der Verstöße (als austauschbare Funktionen umsetzen)
+
+- **V1 Zustimmung vor der Wahl:** Vor jeder Interaktion liegt ein TC-String vor, in dem ≥ 1 Zweck in `purpose.consents` gesetzt ist. Zählt nur, wenn beide Vorher-Snapshots (Ablehnen- und Akzeptieren-Sitzung bzw. die zwei Sitzungen im automatischen Modus) das zeigen. Mattes Variante (≥ 1 Zweck **und** ≥ 1 Vendor-Consent) getrennt speichern.
+- **V2 Keine Ablehnmöglichkeit:** getrennt erfassen: Ablehnen auf der 1. Ebene / nur auf der 2. Ebene / gar nicht.
+- **V3 Vorausgewählt:** Zwecke sind auf der 2. Ebene vorausgewählt. Vendoren getrennt erfassen.
+- **V4 Wahl nicht respektiert:**
+  - streng: Nach Ablehnen sind alle Zwecke gesetzt, die auch nach Akzeptieren gesetzt sind. Nur auswertbar, wenn die Zweckmenge nach Akzeptieren **nicht leer** ist; sonst „nicht auswertbar“ (die leere Menge ist Teilmenge von allem).
+  - Matte-Variante: streng **und** ≥ 1 Vendor-Consent (entspricht Mattes „alle 5 Zwecke“, da v1.1 nur 5 Zwecke hatte).
+  - locker: Nach Ablehnen ist ≥ 1 Zweck in `purpose.consents` gesetzt.
+  - Nur als Zusatzzahl: nach Ablehnen alle Zwecke {1…10} bzw. {1…11} gesetzt.
+- **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560).
+- **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
+- **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
+- **Cookiewalls** (Pay-or-OK) als eigene Kategorie: nichts ablehnen, V1 trotzdem messen.
+
+## Gegenprüfung (Matte, Abschnitt V-C)
+
+- Die beiden Personen teilen die Seiten auf (z. B. je die Hälfte). Jedes Ergebnis wird mit dem Kürzel der Person gespeichert, nichts wird überschrieben.
+- Betrifft V4 und V2. Pro CMP mit Verstoß: eine verstoßende Seite und gleich viele unauffällige Seiten. Die andere Person prüft sie blind, ohne das erste Ergebnis zu kennen.
+- Bei Abweichung zählt das mildere Ergebnis, **und** alle Seiten dieser CMP werden neu geprüft.
+
+## Reproduzierbarkeit (nach Demir et al.)
+
+- Bei jedem Lauf automatisch protokollieren: Datum, Standort/IP-Land, Version von Chrome for Testing und chromedriver, Selenium-Version, Version des Decoders, GVL-Version, Version der CMP-Liste, Wartezeiten, Konfiguration, Tranco-List-ID, Git-Commit.
+- Abweichungen vom Paper und vom ursprünglichen Cookinspect stehen in `docs/abweichungen.md`. Bisher bekannt:
+  - V1 aus zwei Sitzungen statt aus einer.
+  - Standort Berlin statt Frankreich.
+  - Die Seiten werden auf zwei Personen aufgeteilt; bei Matte machte eine Person den ganzen halbautomatischen Crawl.
+- Die README erklärt, wie man alles ausführt.

@@ -20,6 +20,8 @@ PAGE_LOAD_TIMEOUT = 10                  # seconds per attempt
 MAX_TRIES_TIMEOUT = 3                   # attempts before a site counts as unreachable
 SLEEP_TIME_CMP_WAIT = 3                 # seconds after the load event before looking for the CMP
 SLEEP_TIME_REFRESH = 3                  # seconds between the decision and the reload
+USERACTIONCOMPLETE_TIMEOUT = 10         # seconds to wait for eventStatus useractioncomplete;
+                                        # afterwards "no useractioncomplete" is stored and the signal read anyway
 
 # Semi-automatic mode
 MAX_BANNER_RELOADS = 3                  # reload up to 3 times when no banner appears (Appendix D)
