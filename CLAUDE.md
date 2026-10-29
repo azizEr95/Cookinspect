@@ -75,7 +75,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560).
 - **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
 - **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
-- **Cookiewalls** (Pay-or-OK) als eigene Kategorie: nichts ablehnen, V1 trotzdem messen.
+- **Cookiewalls** (Pay-or-OK): Wie sie ausgewertet werden (eigene Kategorie oder V2), legen wir später fest. Bis dahin markiert der Code `w` sie nur, damit nichts verloren geht.
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
 
