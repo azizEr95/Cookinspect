@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Spike top (localhost:8001)</title>
+<script>
+  // First page script: did the injected listener script run before us?
+  window.__pageSawInjection = typeof window.__ciInjectedAt === 'number';
+</script>
+<script>
+  // Minimal CMP following the TCF v2.2 API: addEventListener / removeEventListener / ping,
+  // plus the postMessage interface via the __tcfapiLocator frame.
+  (function () {
+    var listeners = {}, nextId = 1, state = { eventStatus: 'tcloaded', tcString: 'TCSTRING_BEFORE' };
+    function tcData(id) {
+      return { tcString: state.tcString, eventStatus: state.eventStatus, cmpStatus: 'loaded',
+               gdprApplies: true, listenerId: id, purpose: { consents: { '1': true, '10': true }, legitimateInterests: {} },
+               vendor: { consents: { '755': true }, legitimateInterests: {} } };
+    }
+    function fire() { Object.keys(listeners).forEach(function (id) { listeners[id](tcData(Number(id)), true); }); }
+    window.__tcfapi = function (cmd, version, cb, param) {
+      if (cmd === 'ping') cb({ gdprApplies: true, cmpLoaded: true, cmpStatus: 'loaded', apiVersion: '2.2' }, true);
+      else if (cmd === 'addEventListener') { var id = nextId++; listeners[id] = cb; cb(tcData(id), true); }
+      else if (cmd === 'removeEventListener') { var ok = param in listeners; delete listeners[param]; cb(ok); }
+    };
+    window.addEventListener('message', function (e) {
+      var data = e.data; if (typeof data === 'string') { try { data = JSON.parse(data); } catch (x) { return; } }
+      if (!data || !data.__tcfapiCall) return;
+      var call = data.__tcfapiCall;
+      window.__tcfapi(call.command, call.version, function (ret, success) {
+        e.source.postMessage({ __tcfapiReturn: { returnValue: ret, success: success, callId: call.callId } }, '*');
+      }, call.parameter);
+    });
+    setTimeout(function () { state.eventStatus = 'cmpuishown'; fire(); }, 800);
+    window.__userClick = function () {
+      state.eventStatus = 'useractioncomplete'; state.tcString = 'TCSTRING_AFTER'; fire();
+      // like many CMPs: reload the page right after the choice (?reload_after_choice=1)
+      if (location.search.indexOf('reload_after_choice=1') >= 0) setTimeout(function () { location.reload(); }, 200);
+    };
+  })();
+</script>
+</head><body>
+<iframe name="__tcfapiLocator" style="display:none"></iframe>
+<button id="accept" onclick="__userClick()">Alle akzeptieren</button>
+<iframe id="third" src="http://127.0.0.1:8002/frame.html" width="300" height="100"></iframe>
+<script>
+  fetch('/px?gdpr=1&gdpr_consent=TOP_GET');
+  fetch('/collect', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user: { ext: { consent: 'TOP_JSON' } }, regs: { ext: { gdpr: 1 } } }) });
+  fetch('/collect', { method: 'POST', body: new URLSearchParams({ gdpr: '0', gdpr_consent: 'TOP_FORM' }) });
+  navigator.sendBeacon('/beacon', new URLSearchParams({ gdpr_consent: 'TOP_BEACON' }));
+</script>
+</body></html>

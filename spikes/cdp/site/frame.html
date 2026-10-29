@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Spike third party (127.0.0.1:8002)</title></head><body>
+third-party frame
+<script>
+  setTimeout(function () {
+    fetch('/px?gdpr_consent=FRAME_GET&addtl_consent=1~2.3');
+    fetch('/collect', { method: 'POST', body: new URLSearchParams({ gdpr_consent: 'FRAME_FORM' }) });
+    fetch('/collect', { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ user: { ext: { consent: 'FRAME_JSON' } } }) });
+    navigator.sendBeacon('/beacon', 'gdpr_consent=FRAME_BEACON');
+  }, 1000);
+</script>
+</body></html>
