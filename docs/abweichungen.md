@@ -33,9 +33,26 @@ Quellen: offizielle Spezifikation „IAB Tech Lab – Consent string and vendor 
 | v2.2 (Mai 2023) | 11 Zwecke, kein LI für Zwecke 3–6 | `TcfPolicyVersion` wird 4 („With the release of TCF v2.2, the policy version has been incremented to version 4“, Spezifikation) |
 | TCF Policies 5.0 (2024) | Policy-Änderung ohne neue technische Version (u. a. Special Purpose 3) | `TcfPolicyVersion` 5: GVL v3 Nr. 61 (2024-07-11) hat noch 4, Nr. 62 (2024-07-18) schon 5; neue Strings ab 4. Oktober 2024 mit 5.0 |
 | v2.3 (Spezifikation April 2025, verbindlich 28.02.2026) | Segment **disclosedVendors** Pflicht | keine neue `TcfPolicyVersion`: Die aktuelle GVL (Nr. 182, 2026-10-22) hat weiterhin 5. Strings vor dem 1. März 2026 ohne disclosedVendors bleiben gültig |
-| v2.4 (Spezifikation Mai 2026) | GVL bekommt das Feld `standardTexts`; Text zu Vendoren mit nur Special Purposes entfernt | am TC-String nichts; nur die GVL |
+| TCF Policies v5.0.b (29.05.2026) und Technical Specifications v2.4 (23.07.2026, mit neuer GVL) | GVL bekommt das Feld `standardTexts` (Erklärtext zu Features), Abbildungen je Feature, neuer Name für Special Feature 2; Umweg für Vendoren mit nur Special Purposes endgültig entfernt (siehe unten). Frist für CMPs im Web: 23.10.2026, für Apps und CTV: 23.02.2027 (IAB Europe, Schreiben vom 16.07.2026). „May 2026“ in der Versionstabelle der Spezifikation ist das Datum des Entwurfs (Commit `a3e665d`, 2026-05-07), übernommen wurde er am 2026-07-20 (PR #443) | Format des TC-Strings unverändert (v2); die aktuelle GVL (Nr. 182) hat `standardTexts` |
 
 **Korrektur:** In den Berichten zu Phase 2b und 3 stand „Policy-Version 5 = TCF v2.2“. Das ist falsch. 5 ist die Version der **TCF-Policies** (5.0, seit 2024), nicht der technischen TCF-Version. Ob ein String nach v2.2 oder v2.3 gebaut ist, lässt sich nur am Segment disclosedVendors ablesen, nicht an der `TcfPolicyVersion`. Der Decoder speichert deshalb `disclosed_vendors_present`.
+
+### Vendoren mit nur Special Purposes: ändert sich die Bedeutung von Feldern im TC-String?
+
+Geprüft an der Geschichte der Spezifikation (Commits `c2a28ab` 2025-03-31, `b0226e2` 2026-03-04, `d372cdb` 2026-03-11, v2.4 `778c8c4` 2026-07-20).
+
+| Feld | bis v2.2 | ab v2.3 / v2.4 | Bedeutung geändert? |
+|---|---|---|---|
+| **Vendor-LI** (Vendor Legitimate Interest Section im Core) | Umweg: Für Vendoren, die **nur Special Purposes** registriert haben und angezeigt wurden, „the value must be set to 1“. Das Bit hieß dort also „angezeigt“, nicht „berechtigtes Interesse für einen Zweck“ | Der Satz ist gestrichen (2026-03-04, in v2.4 bestätigt). Das Bit heißt nur noch „Legitimate Interest established“ für Zwecke. „For TC strings created prior to March 1, 2026, the Legitimate Interest bit was set to 1 for vendors declaring Special Purposes“ | **ja**, für Strings vor dem 1. März 2026 |
+| **disclosedVendors** | optional und „must not be included in the TC String when returned by the CMP API“ | Pflicht; listet alle dem Nutzer offengelegten Vendoren, auch die mit nur Special Purposes. Damit ersetzt es den Umweg über das LI-Bit | Rolle geändert mit v2.3; **v2.4 ändert daran nichts** |
+| Zweck-LI (`purpose.legitimateInterests`) | – | – | nein |
+
+Folgen für unsere Auswertung:
+
+- **Zweck-LI** (auch das Verbot für Zwecke 3–6) und **alle Zweck-Consents** sind nicht betroffen. Damit sind auch V1–V4 nicht betroffen, weil sie auf Zwecken beruhen.
+- **Vendor-LI:** In Strings, die vor dem 1. März 2026 erstellt wurden, kann ein gesetztes Bit nur „angezeigt“ bedeuten. In der aktuellen GVL (Nr. 182) gibt es 21 Vendoren mit nur Special Purposes. Für Phase 8 vorgemerkt: Vendor-LI-Bits für solche Vendoren (laut GVL-Version des Strings) werden getrennt gezählt und nicht als berechtigtes Interesse gewertet, bei alten wie bei neuen Strings. Setzt eine CMP das Bit nach dem 1. März 2026 noch, folgt sie dem entfernten Umweg; auch das wird ausgewiesen.
+- Unsere Sitzungen beginnen mit frischem Profil. Die gemessenen Strings entstehen also beim Besuch (nach dem 23.10.2026) und haben die neue Bedeutung, wenn die CMP aktuell ist.
+- **Zustimmung außerhalb von disclosedVendors** (E5) ist nur für Strings mit dem Segment auswertbar. v2.2-Strings durften es über die API gar nicht enthalten.
 
 Folge für die Messung: Die Policy-Regeln (11 Zwecke, kein LI für Zwecke 3–6) sind in allen Strings mit `TcfPolicyVersion` 4 oder 5 gleich. Die Verstöße V1–V4 werden für v2.2- und v2.3-Strings gleich bewertet. Strings mit `TcfPolicyVersion` < 4 sind seit 30.09.2023 ungültig; sie werden markiert.
 
