@@ -8,7 +8,7 @@
 
 **Aufbau des Tests** (`spikes/cdp/`, Wegwerfcode):
 
-- `server.py` und `site/`: lokale Testseite auf zwei Origins. `localhost:8001` ist die Seite mit einer kleinen CMP nach der TCF-v2.2-API (inkl. `__tcfapiLocator` und postMessage), `127.0.0.1:8002` ein fremdes iframe. Es sind zwei verschiedene Sites, deshalb läuft das iframe in einem eigenen Renderer-Prozess wie ein echtes Werbe-iframe. Beide senden markierte Requests: GET mit `gdpr_consent`/`addtl_consent`, POST mit JSON (`user.ext.consent`), POST mit Formulardaten (`gdpr=0`), `sendBeacon`. Der Server protokolliert, was ankommt (Grundwahrheit).
+- `server.py` und `site/`: lokale Testseite auf zwei Origins. `localhost:8001` ist die Seite mit einer kleinen CMP nach der TCF-v2.2/v2.3-API (inkl. `__tcfapiLocator` und postMessage), `127.0.0.1:8002` ein fremdes iframe. Es sind zwei verschiedene Sites, deshalb läuft das iframe in einem eigenen Renderer-Prozess wie ein echtes Werbe-iframe. Beide senden markierte Requests: GET mit `gdpr_consent`/`addtl_consent`, POST mit JSON (`user.ext.consent`), POST mit Formulardaten (`gdpr=0`), `sendBeacon`. Der Server protokolliert, was ankommt (Grundwahrheit).
 - `spike.py`: Kriterien K1–K5 lokal (`local`) und an echten Seiten (`real`, `real-accept`), mit Prüfung der robots.txt.
 - `spike_k1.py`: zwei Auswege für K1 im Vergleich.
 - `spike_k3.py`: Listener, der das Neuladen der Seite übersteht.
@@ -79,10 +79,10 @@ Der Vorfilter läuft zweimal über alle 1000 Domains, jeweils mit eigenem Lauf-O
 
 Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung können Wochen liegen. Die Zahlen im Paper und die gemessenen Seiten sollen aus demselben Zeitpunkt stammen. Der Vergleich beider Läufe zeigt, wie stabil die Auswahl ist. `prefilter.py` verlangt entweder `--test` oder `--purpose`.
 
-## E4 (2026-10-29, später): Cookie Glasses auf TCF v2.2 erweitern
+## E4 (2026-10-29, später): Cookie Glasses auf TCF v2.2/v2.3 erweitern
 
 **Später, frühestens nach der Messung.** Jetzt wird nichts daran umgesetzt.
 
-- Idee: die Browser-Erweiterung Cookie Glasses (Matte et al., GPLv3) auf TCF v2.2 erweitern, z. B. als Demo fürs Poster.
+- Idee: die Browser-Erweiterung Cookie Glasses (Matte et al., GPLv3) auf TCF v2.2/v2.3 erweitern, z. B. als Demo fürs Poster.
 - Vorgabe für Phase 4: Der Decoder (`decode/`, `@iabtechlabtcf/core`) wird so gebaut, dass er sich dafür wiederverwenden lässt. Die Dekodierung bleibt eine eigenständige Funktion „TC-String rein, alle IDs als JSON raus“, ohne Abhängigkeit von Selenium, Python oder der Datenbank, damit sie auch in einer Erweiterung laufen kann.
 - Lizenz: Cookie Glasses steht unter GPLv3; eine Erweiterung davon muss ebenfalls GPLv3 sein. Für unseren Decoder heißt das: keinen Code aus Cookie Glasses übernehmen, damit er unabhängig lizenzierbar bleibt.

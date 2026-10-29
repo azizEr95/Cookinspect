@@ -13,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config  # noqa: E402
 from browser import start_chrome  # noqa: E402
 from capture import Capture, tc_string_header  # noqa: E402
+from consent_lists import latest_cmp_list  # noqa: E402
+from decoder import analyse  # noqa: E402
 from robots import check_robots  # noqa: E402
 
 
@@ -39,7 +41,24 @@ def describe(snapshot):
     ])
 
 
+def decoded_summary(tc_string, cmp_list):
+    if not tc_string:
+        return "  decoded: no TC string in channel 1"
+    [entry] = analyse([tc_string], cmp_list)
+    d, c = entry["decoded"], entry.get("checks", {})
+    if not d.get("decoded"):
+        return f"  decoded: v{entry['tc_version']} not decoded ({d.get('reason')})"
+    return (f"  decoded: purposes {d['purposeConsents']} | LI {d['purposeLegitimateInterests']}"
+            f" | vendors with consent {len(d['vendorConsents'])}, LI {len(d['vendorLegitimateInterests'])}"
+            f" | disclosed {len(d['vendorsDisclosed'])} ({c['tcf_version_by_segments']})"
+            f" | policy {d['policyVersion']} | GVL v{c['gvl_version_used']} ({c.get('gvl_series')},"
+            f" available {c['gvl_available']}, unknown vendors {len(c.get('unknown_vendor_consents', []))})"
+            f" | CMP {d['cmpId']} {c['cmp'].get('name')} valid {c['cmp']['valid']}"
+            f" | forbidden LI {c['forbidden_li_purposes']} | created {d['created'][:10]}")
+
+
 def main(domains):
+    cmp_list, _ = latest_cmp_list()
     for domain in domains:
         url = f"https://www.{domain}"
         robots = check_robots(url)
@@ -51,7 +70,9 @@ def main(domains):
             session = Capture(driver, url)
             driver.get(url)
             time.sleep(config.SLEEP_TIME_CMP_WAIT)
-            print("[before]\n" + describe(session.snapshot("before")))
+            before = session.snapshot("before")
+            print("[before]\n" + describe(before))
+            print(decoded_summary((before["channel_1"]["latest_event"] or {}).get("tcString"), cmp_list))
             session.collect_requests()
             driver.refresh()
             time.sleep(config.SLEEP_TIME_CMP_WAIT)

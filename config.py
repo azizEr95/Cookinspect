@@ -1,4 +1,4 @@
-"""Settings of the Cookinspect reimplementation (TCF v2.2). Every value here is written into the
+"""Settings of the Cookinspect reimplementation (TCF v2.2/v2.3). Every value here is written into the
 run metadata, so that a run can be reproduced."""
 from pathlib import Path
 

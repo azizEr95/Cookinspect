@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 import config
 from browser import browser_versions, start_chrome
+from consent_lists import latest_cmp_list, latest_gvl
 
 IP_COUNTRY_URL = "https://ipinfo.io/country"
 DECODER_PACKAGE = "@iabtechlabtcf/core"
@@ -96,6 +97,18 @@ def browser_metadata():
     return versions
 
 
+def consent_lists_metadata():
+    """Current GVL v3 and the CMP list snapshot of this run (kept under data/). Each TC string is
+    evaluated later with the GVL version written in it; those versions are stored per string."""
+    lists = {}
+    for name, fetch in (("gvl_latest", latest_gvl), ("cmp_list", lambda: latest_cmp_list()[1])):
+        try:
+            lists[name] = fetch()
+        except Exception as error:
+            lists[name] = {"error": f"{type(error).__name__}: {error}"}
+    return lists
+
+
 def new_metadata(mode, test_run, **extra):
     """Checks the environment first, so that a refused run starts no browser."""
     environment = check_environment(test_run)
@@ -111,6 +124,7 @@ def new_metadata(mode, test_run, **extra):
         "packages": {name: package_version(name) for name in ("selenium", "protego", "tldextract")},
         "node_version": node_version(),
         "decoder": {"package": DECODER_PACKAGE, "version": decoder_version()},
+        "consent_lists": consent_lists_metadata(),
         "platform": platform.platform(),
         "machine": platform.machine(),
         "config": settings_from_config(),
