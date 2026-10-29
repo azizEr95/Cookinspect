@@ -45,10 +45,10 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Halbautomatischer Modus (V2–V4, wie bei Matte): Ein Mensch klickt, das Werkzeug liest mit. Im Messcode wird weder automatisch abgelehnt noch akzeptiert. Das Klicken aus Testskripten (z. B. `spikes/`) darf nicht in den Messcode.
   1. Seite laden. Erscheint kein Banner, bis zu 3-mal neu laden (Anhang D).
   2. Snapshot „vorher“.
-  3. Ablehnen nach Anhang D (Regeln unten). Steuercodes: `n` keine Ablehnmöglichkeit, `p` vorausgewählt, `b` kein Banner, `x` Banner kaputt, `w` Cookiewall; dazu die Ebene des Ablehnens. Bei `n` wird direkt akzeptiert (Anhang D); eine Ablehnen-Sitzung gibt es dann nicht.
+  3. Ablehnen nach Anhang D (Regeln unten). Codes: `r` kostenlos ablehnbar (mit der Ebene des Ablehnens), `n` keine Ablehnmöglichkeit, `w` Cookiewall ohne kostenloses Ablehnen, `x` Banner kaputt; `b` (kein Banner) ergibt sich, wenn nach 3-mal Neuladen kein Banner erscheint. Vorausgewählte Optionen (V3) sind kein Code, sondern eigene Felder für Zwecke und Vendoren. Bei `n` wird direkt akzeptiert (Anhang D), bei `w` ebenfalls (zustimmen, nicht bezahlen); eine Ablehnen-Sitzung gibt es dann nicht. Bei `b` und `x` folgt keine weitere Sitzung.
   4. Signal nach `eventStatus = useractioncomplete` auslesen. Kommt das Ereignis nicht innerhalb der Zeitgrenze `USERACTIONCOMPLETE_TIMEOUT` (`config.py`), wird „kein useractioncomplete“ gespeichert und trotzdem ausgelesen, klar markiert.
   5. Nach 3 Sekunden neu laden und erneut auslesen.
-  6. Neue Sitzung, dieselben Schritte mit Akzeptieren.
+  6. Neue Sitzung, dieselben Schritte mit Akzeptieren (nur bei `r`).
 - Pro Phase (vorher, nach Ablehnen, nach Reload, nach Akzeptieren) werden alle Zweck- und Vendor-IDs gespeichert, nicht nur Bool-Flags.
 - Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert; niedrige Priorität; die Quote „nicht messbar“ pro Phase – vorher, nach Ablehnen, nach Akzeptieren – erscheint in der Auswertung); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
 - Kein Shared Cookie / consensu.org mehr (gibt es in v2 nicht).
@@ -61,11 +61,12 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Gibt es keine Einstellungen, nur einen Link zur Datenschutzerklärung: höchstens 10 s dort nach einer Ablehnmöglichkeit suchen, dann zurück zur Hauptseite.
 - Liegen die Optionen auf einer anderen Seite, nach dem Ablehnen zurück zur Hauptseite.
 - Das Banner immer schließen, und zwar mit der Schaltfläche, die am wenigsten nach Zustimmung klingt.
-- Cookiewall (Zustimmen oder bezahlen): nichts klicken, Code `w`.
+- Cookiewall (Zustimmen oder bezahlen): Code `w` nur, wenn es **keinen** kostenlosen Weg zum Ablehnen gibt, auch nicht auf der 2. Ebene; dann nicht bezahlen und in derselben Sitzung akzeptieren. Gibt es einen kostenlosen Weg, wird abgelehnt (Code `r` mit der passenden Ebene; Matte lehnt immer ab, wenn es einen Weg gibt, Anhang D), und die Seite wird zusätzlich als Cookiewall markiert.
+- Unabhängig vom Code wird gefragt, ob es eine Bezahl-Option gibt (Label-Feld `cookiewall_seen`, ja/nein; bei `w` immer ja).
 
 ## Definitionen der Verstöße (als austauschbare Funktionen umsetzen)
 
-- **V1 Zustimmung vor der Wahl:** Vor jeder Interaktion liegt ein TC-String vor, in dem ≥ 1 Zweck in `purpose.consents` gesetzt ist. Zählt nur, wenn beide Vorher-Snapshots (Ablehnen- und Akzeptieren-Sitzung bzw. die zwei Sitzungen im automatischen Modus) das zeigen. Mattes Variante (≥ 1 Zweck **und** ≥ 1 Vendor-Consent) getrennt speichern.
+- **V1 Zustimmung vor der Wahl:** Vor jeder Interaktion liegt ein TC-String vor, in dem ≥ 1 Zweck in `purpose.consents` gesetzt ist. Berechnet aus dem automatischen Modus: Zählt nur, wenn beide Vorher-Snapshots der zwei Sitzungen das zeigen. Die Vorher-Snapshots des halbautomatischen Modus sind nur eine Ergänzung (bei `n` und `w` gibt es dort nur eine Sitzung). Mattes Variante (≥ 1 Zweck **und** ≥ 1 Vendor-Consent) getrennt speichern.
 - **V2 Keine Ablehnmöglichkeit:** getrennt erfassen: Ablehnen auf der 1. Ebene / nur auf der 2. Ebene / gar nicht.
 - **V3 Vorausgewählt:** Zwecke sind auf der 2. Ebene vorausgewählt. Vendoren getrennt erfassen.
 - **V4 Wahl nicht respektiert:**
@@ -73,11 +74,11 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
   - Matte-Variante: streng **und** ≥ 1 Vendor-Consent (entspricht Mattes „alle 5 Zwecke“, da v1.1 nur 5 Zwecke hatte).
   - locker: Nach Ablehnen ist ≥ 1 Zweck in `purpose.consents` gesetzt.
   - Nur als Zusatzzahl: nach Ablehnen alle Zwecke {1…10} bzw. {1…11} gesetzt.
-- **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560).
+- **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560); `w` je nach Konfiguration (siehe Cookiewalls).
 - **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
 - **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
 - **Cookiewalls** (Pay-or-OK): Ausgewertet wird erst, wenn die Daten des automatischen Crawls vorliegen. Davon hängt auch ab, ob die Forschungsfrage um Cookiewalls erweitert wird. Bis dahin:
-  - Der automatische Modus erkennt und markiert Cookiewalls, der halbautomatische Modus markiert sie mit `w`.
+  - Der automatische Modus erkennt und markiert Cookiewalls (Heuristik), der halbautomatische Modus markiert sie mit `cookiewall_seen` und, ohne kostenloses Ablehnen, mit `w`.
   - Die Verstoß-Logik verdrahtet `w` nicht fest. Der Umgang ist konfigurierbar (z. B. „ausschließen“ oder „als V2 zählen“); bis zur Entscheidung werden beide Varianten ausgewiesen.
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
@@ -89,8 +90,5 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 ## Reproduzierbarkeit (nach Demir et al.)
 
 - Bei jedem Lauf automatisch protokollieren: Datum, Standort/IP-Land, Version von Chrome for Testing und chromedriver, Selenium-Version, Version des Decoders, GVL-Version, Version der CMP-Liste, Wartezeiten, Konfiguration, Tranco-List-ID, Git-Commit.
-- Abweichungen vom Paper und vom ursprünglichen Cookinspect stehen in `docs/abweichungen.md`. Bisher bekannt:
-  - V1 aus zwei Sitzungen statt aus einer.
-  - Standort Berlin statt Frankreich.
-  - Die Seiten werden auf zwei Personen aufgeteilt; bei Matte machte eine Person den ganzen halbautomatischen Crawl.
+- Abweichungen vom Paper und vom ursprünglichen Cookinspect stehen nur in `docs/abweichungen.md` (einziger Stand).
 - Die README erklärt, wie man alles ausführt.
