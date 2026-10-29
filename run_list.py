@@ -4,7 +4,10 @@ data/, next to run_metadata.json.
 
     venv/bin/python run_list.py LIST.csv                          # automatic check (default)
     venv/bin/python run_list.py LIST.csv --mode semi-automatic
-    venv/bin/python run_list.py LIST.csv --mode test-cmp --limit 10
+    venv/bin/python run_list.py LIST.csv --mode test-cmp --limit 10 --test
+
+Without --test the run is a real crawl and is refused unless config.CRAWL_USER is set and the
+working tree is clean (run_metadata.check_environment).
 
 LIST.csv is either a CSV with a "domain" column (e.g. rank,domain from the Tranco selection) or a
 plain list with one domain per line, without "www." (it is added, as in Cookinspect). If a .json
@@ -72,6 +75,7 @@ def main():
     parser.add_argument("list", help="CSV with a domain column, or one domain per line")
     parser.add_argument("--mode", choices=MODES, default="automatic")
     parser.add_argument("--limit", type=int, help="only the first N domains (for tests)")
+    parser.add_argument("--test", action="store_true", help="test run: CRAWL_USER and a clean Git state are not required")
     args = parser.parse_args()
 
     domains = read_domains(args.list)
@@ -81,10 +85,10 @@ def main():
     if limit is not None:
         domains = domains[:limit]
 
+    metadata = new_metadata(args.mode, args.test, website_list={"path": str(args.list), "info": list_info(args.list),
+                                                                "domains": len(domains), "limit": limit})
     run_dir = config.DATA_DIR / f"run-{args.mode}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
     run_dir.mkdir(parents=True)
-    metadata = new_metadata(args.mode, website_list={"path": str(args.list), "info": list_info(args.list),
-                                                     "domains": len(domains), "limit": limit})
     write_metadata(metadata, run_dir)
     print(f"Run directory: {run_dir}")
 

@@ -8,9 +8,12 @@ decisions are stored for the same response:
   >= 400 as "everything allowed" (cookinspect.py:96-98 at 948a85f), also 5xx, and an unknown
   fetch error as allowed as well
 """
+import socket
+import ssl
 import urllib.error
 import urllib.request
 import urllib.robotparser
+from http.client import IncompleteRead
 from urllib.parse import urljoin
 
 from protego import Protego
@@ -18,16 +21,53 @@ from protego import Protego
 import config
 
 
+# Errors after which Cookinspect tried again over HTTP (cookinspect.py:121-153 at 948a85f).
+# Cookinspect compared the Linux error texts; here the exception types are compared, which also
+# works on macOS, where the texts differ.
+NETWORK_ERRORS = (ssl.SSLError, ssl.CertificateError, TimeoutError, socket.timeout,
+                  ConnectionRefusedError, ConnectionResetError, IncompleteRead)
+
+
+def error_kind(error):
+    """'dns' (name not resolved), 'network' (TLS, timeout, refused, reset) or 'other'."""
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, socket.gaierror):
+        return "dns"
+    if isinstance(reason, NETWORK_ERRORS):
+        return "network"
+    return "other"
+
+
 def fetch_robots(robots_url):
-    """Returns (status, content); status is None if robots.txt could not be fetched at all."""
+    """Returns (status, content, error). status is None if robots.txt could not be fetched at
+    all; error is then 'dns', 'network' or 'other'."""
     request = urllib.request.Request(robots_url, headers={"User-Agent": config.HTTP_USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=config.HTTP_TIMEOUT) as response:
-            return response.status, response.read().decode("utf-8", errors="replace")
+            return response.status, response.read().decode("utf-8", errors="replace"), None
     except urllib.error.HTTPError as error:   # the server answered, but with an error status
-        return error.code, None
-    except Exception:                         # no answer: DNS, TLS, timeout, connection refused
-        return None, None
+        return error.code, None, None
+    except Exception as error:                # no answer
+        return None, None, error_kind(error)
+
+
+def find_robots(domain):
+    """Reachability as in Matte et al. (2020), p. 5, and cookinspect.py:121-153: start with
+    https://www.<domain>/robots.txt; after a network error try HTTP, after a DNS error try the
+    domain without www. One attempt per address, timeout config.HTTP_TIMEOUT.
+    Returns the main page URL that answered (or the last one tried) and all attempts."""
+    scheme, host = "https", f"www.{domain}"
+    attempts = []
+    while True:
+        main_page_url = f"{scheme}://{host}"
+        status, content, error = fetch_robots(main_page_url + "/robots.txt")
+        attempts.append({"url": main_page_url + "/robots.txt", "status": status, "error": error})
+        if error == "network" and scheme == "https":
+            scheme = "http"
+        elif error == "dns" and host.startswith("www."):
+            host = domain
+        else:
+            return main_page_url, status, content, error, attempts
 
 
 def protego_decision(status, content, page_url):
@@ -67,13 +107,16 @@ def cookinspect_decision(status, content, page_url):
     return parser.can_fetch(config.ROBOTS_USER_AGENT, page_url)
 
 
-def check_robots(page_url):
-    robots_url = urljoin(page_url, "/robots.txt")
-    status, content = fetch_robots(robots_url)
+def decisions(status, content, page_url):
     return {
-        "robots_url": robots_url,
-        "robots_status": status,
         "robots_allowed": protego_decision(status, content, page_url),
         "robots_allowed_urllib": urllib_decision(status, content, page_url),
         "robots_allowed_cookinspect": cookinspect_decision(status, content, page_url),
     }
+
+
+def check_robots(page_url):
+    robots_url = urljoin(page_url, "/robots.txt")
+    status, content, error = fetch_robots(robots_url)
+    return {"robots_url": robots_url, "robots_status": status, "robots_error": error,
+            **decisions(status, content, page_url)}

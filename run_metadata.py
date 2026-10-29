@@ -64,13 +64,21 @@ def settings_from_config():
             for name, value in vars(config).items() if name.isupper()}
 
 
-def check_environment():
-    """Safe environment: refuses to run under another user than config.CRAWL_USER (if set)."""
+def check_environment(test_run):
+    """Safe environment. Always refuses to run under another user than config.CRAWL_USER (if set).
+    A real crawl (not a test run) is also refused when CRAWL_USER is not set or when the working
+    tree has uncommitted changes, because then the Git commit in the metadata would not describe
+    the code that ran."""
     user = getpass.getuser()
     if config.CRAWL_USER is not None and user != config.CRAWL_USER:
         raise SystemExit(f"Run this under the macOS user '{config.CRAWL_USER}', not '{user}' (config.CRAWL_USER).")
-    if config.CRAWL_USER is None:
-        print("Warning: config.CRAWL_USER is not set, so the own crawl user is not checked.")
+    if not test_run:
+        if config.CRAWL_USER is None:
+            raise SystemExit("Real crawl refused: config.CRAWL_USER is not set. For a test, add --test.")
+        if git_commit()["dirty"]:
+            raise SystemExit("Real crawl refused: uncommitted changes in the repository. Commit first, or add --test.")
+    elif config.CRAWL_USER is None:
+        print("Warning: config.CRAWL_USER is not set, so the own crawl user is not checked (test run).")
     return {"os_user": user, "crawl_user_checked": config.CRAWL_USER is not None}
 
 
@@ -87,12 +95,15 @@ def browser_metadata():
     return versions
 
 
-def new_metadata(mode, **extra):
+def new_metadata(mode, test_run, **extra):
+    """Checks the environment first, so that a refused run starts no browser."""
+    environment = check_environment(test_run)
     return {
         "mode": mode,
+        "test_run": test_run,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "ip_country": ip_country(),
-        "environment": check_environment(),
+        "environment": environment,
         "git": git_commit(),
         "browser": browser_metadata(),
         "python_version": platform.python_version(),
@@ -113,4 +124,4 @@ def write_metadata(metadata, output_dir):
 
 
 if __name__ == "__main__":
-    print(json.dumps(new_metadata("setup-check"), indent=2, ensure_ascii=False))
+    print(json.dumps(new_metadata("setup-check", test_run=True), indent=2, ensure_ascii=False))
