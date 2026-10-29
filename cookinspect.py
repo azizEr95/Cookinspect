@@ -332,8 +332,6 @@ def semi_automatic_violations_check(website):
     #os.system("mpv msn.mp3 >/dev/null 2>/dev/null &")
     #print("\a")
     headful_violations_check(browser, website, args, refusal=False)
-    if website.shared_cookie_set_acceptance and not website.shared_cookie_set_refusal:
-        print("*********** VIOLATION: Shared cookie only set upon acceptance! ****************")
     # getting trackers post-refresh
     browser.refresh()
     time.sleep(SLEEP_TIME_REFRESH)
@@ -393,12 +391,6 @@ def dump_website(website):
         print("Different consent strings found.")
     if website.different_cmpids:
         print("Different CMP ids found.")
-    if website.shared_cookie_set:
-        print("Shared cookie set.")
-        if website.shared_cookie_set_refusal:
-            print("Shared cookie set upon refusal.")
-            if website.shared_cookie_set_acceptance:
-                print("Shared cookie set upon acceptance.")
     print("*** Violations:")
     print("+-------------------------------------------+")
     print("| Violation / Behaviour           | DMGPC A |")
@@ -417,7 +409,6 @@ def dump_website(website):
                                                                 x(website.violation_consent_set_active_refusal_get),
                                                                 x(website.violation_consent_set_active_refusal_post),
                                                                 x(website.violation_consent_set_active_refusal_cookie)))
-    print("| Shared Consent                  |       %s |" % x(website.violation_shared_cookie))
     #print("| Consent to non-existent vendors |       %s |" % x(website.violation_unregistered_vendors_in_consent_string))
     print("| Wrong CMP id                    |       %s |" % x(website.violation_incorrect_cmpid))
     #print("| Vendors case 1                  |       %s |" % xa(website.violation_vendor_1))
