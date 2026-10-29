@@ -86,3 +86,12 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 - Idee: die Browser-Erweiterung Cookie Glasses (Matte et al., GPLv3) auf TCF v2.2/v2.3 erweitern, z. B. als Demo fürs Poster.
 - Vorgabe für Phase 4: Der Decoder (`decode/`, `@iabtechlabtcf/core`) wird so gebaut, dass er sich dafür wiederverwenden lässt. Die Dekodierung bleibt eine eigenständige Funktion „TC-String rein, alle IDs als JSON raus“, ohne Abhängigkeit von Selenium, Python oder der Datenbank, damit sie auch in einer Erweiterung laufen kann.
 - Lizenz: Cookie Glasses steht unter GPLv3; eine Erweiterung davon muss ebenfalls GPLv3 sein. Für unseren Decoder heißt das: keinen Code aus Cookie Glasses übernehmen, damit er unabhängig lizenzierbar bleibt.
+
+## E5 (2026-10-29, für Phase 8 vorgemerkt): Zustimmung für nicht offengelegte Vendoren
+
+**Zusatzzahl, kein neuer Verstoß.** Analog zu Matte et al. (2020), Anhang F („Consent to nonexistent vendors“).
+
+- Gezählt werden Vendor-Consents außerhalb von disclosedVendors: `vendorConsents \ vendorsDisclosed`, also Zustimmung für Vendoren, die dem Nutzer nicht offengelegt wurden. Ausgewiesen pro Phase (vorher, nach Ablehnen, nach Akzeptieren).
+- Nur auswertbar für Strings **mit** disclosedVendors-Segment (v2.3-Strings). Bei v2.2-Strings ohne das Segment: „nicht auswertbar“, getrennt gezählt.
+- Daneben, wie bei Matte: Vendor-Consents für Vendoren, die in der GVL-Version des Strings nicht vorkommen oder gelöscht sind (`unknown_vendor_consents`, Phase 4). Nur auswertbar, wenn die GVL verfügbar ist.
+- Fehlt die GVL, entfallen nur diese GVL-abhängigen Zahlen. Alle Zweck- und Vendor-IDs kommen aus dem String selbst, deshalb fällt kein String aus V1–V4 heraus (Test `tests/test_decoder.py::test_without_gvl_all_ids_are_kept_and_only_gvl_checks_are_missing`).

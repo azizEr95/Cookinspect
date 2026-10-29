@@ -124,3 +124,16 @@ def test_analyse_uses_the_gvl_version_of_the_string(monkeypatch):
     assert entry["checks"]["tcf_version_by_segments"] == "v2.3"
     [v1] = decoder.analyse([FIXTURES["v1_specification_example"]], CMP_LIST)
     assert v1["tc_version"] == 1 and "checks" not in v1
+
+
+def test_without_gvl_all_ids_are_kept_and_only_gvl_checks_are_missing(monkeypatch):
+    # "GVL not available" must not drop a string from V1/V4: the IDs come from the string alone
+    monkeypatch.setattr(decoder, "load_gvl", lambda version, policy: None)
+    [entry] = decoder.analyse([FIXTURES["purposes_1_10"]], CMP_LIST)
+    assert entry["decoded"]["purposeConsents"] == [1, 10]
+    assert entry["decoded"]["vendorConsents"] == [755]
+    assert entry["checks"]["gvl_available"] is False
+    assert "unknown_vendor_consents" not in entry["checks"]                # GVL-dependent check missing
+    assert entry["checks"]["forbidden_li_purposes"] == []                   # checks without GVL remain
+    assert entry["checks"]["cmp"]["valid"] is True
+    assert entry["checks"]["gvl_version_used"] == 100
