@@ -99,7 +99,7 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 ## E6 (2026-10-29, für Phase 8 vorgemerkt): Cookiewall-Heuristik gegen das manuelle `w`
 
 - Die Erkennung im automatischen Modus (`cookiewall.py`, `session.cookiewall_suspected`, `examination.cookiewall_suspected`) ist eine **Heuristik**. Sie wird in Ergebnissen immer so bezeichnet.
-- Phase 8 gleicht sie mit dem Code `w` der Personen ab, für alle Seiten, die in beiden Modi geprüft wurden: Vierfeldertafel (Heuristik ja/nein × `w` ja/nein), Übereinstimmung, Präzision und Trefferquote der Heuristik, dazu die Liste der Abweichungen mit dem Grund der Heuristik.
+- Phase 8 gleicht sie mit dem Label-Feld `cookiewall_seen` der Personen ab (Bezahl-Option gesehen, unabhängig vom Code; zusätzlich getrennt mit dem Code `w`), für alle Seiten, die in beiden Modi geprüft wurden: Vierfeldertafel (Heuristik ja/nein × `w` ja/nein), Übereinstimmung, Präzision und Trefferquote der Heuristik, dazu die Liste der Abweichungen mit dem Grund der Heuristik.
 - Maßgeblich für die Auswertung ist das manuelle `w`; die Heuristik dient der Einordnung der automatischen Zahlen und der Entscheidung, ob die Forschungsfrage erweitert wird.
 
 ## E7 (2026-10-29, für Phase 8 vorgemerkt): TCF-API ohne TC-String bei V1

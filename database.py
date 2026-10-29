@@ -22,7 +22,7 @@ import decoder
 from capture import registrable_domain
 
 SCHEMA_PATH = config.REPO_DIR / "schema.sql"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 # Older files are brought up to date when opened; a migration only adds tables or columns.
 MIGRATIONS_DIR = config.REPO_DIR / "migrations"   # <version>.sql: from version - 1 to version
 
@@ -181,13 +181,14 @@ def finish_examination(conn, examination_id, status, cookiewall_suspected=None, 
 
 def insert_label(conn, examination_id, operator, outcome, reject_level=None, settings_layer_available=None,
                  purposes_preselected=None, vendors_preselected=None, privacy_policy_searched=None,
-                 closed_with=None, note=None):
+                 cookiewall_seen=None, closed_with=None, note=None):
     with conn:
         insert(conn, "label", {
             "examination_id": examination_id, "operator": operator, "labeled_at": now(), "outcome": outcome,
             "reject_level": reject_level, "settings_layer_available": as_int(settings_layer_available),
             "purposes_preselected": as_int(purposes_preselected), "vendors_preselected": as_int(vendors_preselected),
-            "privacy_policy_searched": as_int(privacy_policy_searched), "closed_with": closed_with, "note": note})
+            "privacy_policy_searched": as_int(privacy_policy_searched), "cookiewall_seen": as_int(cookiewall_seen),
+            "closed_with": closed_with, "note": note})
 
 
 def insert_session(conn, examination_id, kind, url, number=1, started_at=None):

@@ -58,7 +58,7 @@ Noch alt und zu ersetzen: `extract_results.py` (Phase 8; importiert das entfernt
 
 ## Phase 7: halbautomatischer Modus (fertig)
 
-`semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code, Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
+`semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code (`w` nur ohne kostenloses Ablehnen, sonst `r`), Bezahl-Option `cookiewall_seen` (unabhängig vom Code), Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
 
 ## Phase 8: Verstoß-Logik und Auswertung
 
@@ -75,7 +75,7 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
 - Cookiewalls: Umgang mit `w` konfigurierbar („ausschließen“ / „als V2 zählen“), **beide Varianten ausweisen**.
 - Vorgemerkt:
   - **E5:** Vendor-Consents außerhalb von `vendor_disclosed` (nur Strings mit disclosedVendors; v2.2-Strings „nicht auswertbar“); dazu Vendoren, die in der GVL des Strings fehlen (wie Matte Anhang F).
-  - **E6:** Cookiewall-Heuristik gegen `w`: Vierfeldertafel, Übereinstimmung, Präzision, Trefferquote, Liste der Abweichungen.
+  - **E6:** Cookiewall-Heuristik gegen `cookiewall_seen` (und getrennt gegen `w`): Vierfeldertafel, Übereinstimmung, Präzision, Trefferquote, Liste der Abweichungen.
   - **Vendor-LI bei Vendoren mit nur Special Purposes** (laut GVL des Strings) getrennt zählen, nicht als berechtigtes Interesse; Bit nach dem 1. März 2026 noch gesetzt = alter Umweg (siehe `docs/abweichungen.md`).
   - Strings mit `policy_version_outdated`, `disclosed_vendors_missing_after_v23_deadline`, ungültiger CMP-ID ausweisen.
   - Sperren (`blocked`) und `empty_tc_data` zählen.

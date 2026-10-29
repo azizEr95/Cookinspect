@@ -8,12 +8,14 @@ Per site (CLAUDE.md, Ablauf):
   3. the person looks at the banner and enters the code:
        r  can be rejected       -> rejects now (rules of Appendix D are shown)
        n  no way to reject      -> accepts in this session (no reject session)
-       w  cookiewall            -> no reject session; accepts in this session
+       w  cookiewall without a free way to reject (also not on the 2nd layer)
+                                -> no reject session; accepts in this session (does not pay)
        x  banner broken         -> nothing more
      (b, no banner, follows from step 1)
   4. wait for eventStatus useractioncomplete (or store "no useractioncomplete"), screenshot after
      closing, snapshot after the action; after 3 s reload, snapshot again
-  5. the questions of the label (layer, 2nd layer, V3 purposes and vendors, closing button, note)
+  5. the questions of the label (layer, pay option, 2nd layer, V3 purposes and vendors, closing
+     button, note)
   6. code r only: second fresh session, the same with accepting
 
 After every step the terminal shows what was stored. In a crosscheck (role crosscheck) nothing
@@ -48,6 +50,9 @@ from run_metadata import new_metadata, write_metadata
 LOOK = """
   Banner ansehen, noch nichts bestätigen. Die Einstellungen (2. Ebene) dürfen geöffnet werden.
   Gibt es eine Möglichkeit, abzulehnen?
+  Cookiewall (Bezahl-Option): Code w nur, wenn es KEINEN kostenlosen Weg zum Ablehnen gibt, auch
+  nicht auf der 2. Ebene. Gibt es einen, ist der Code r (Matte lehnt immer ab, wenn es geht,
+  Anhang D); die Bezahl-Option wird danach eigens abgefragt.
 """
 
 # Appendix D (CLAUDE.md, Regeln für das Ablehnen)
@@ -70,8 +75,8 @@ ACCEPT_RULES = """
 """
 
 CODES = {"r": "rejected", "n": "n", "w": "w", "x": "x"}
-CODE_TEXT = {"r": "abgelehnt / ablehnbar", "n": "keine Ablehnmöglichkeit", "w": "Cookiewall (Zustimmen oder bezahlen)",
-             "x": "Banner kaputt"}
+CODE_TEXT = {"r": "kostenlos ablehnbar", "n": "keine Ablehnmöglichkeit",
+             "w": "Cookiewall ohne kostenloses Ablehnen", "x": "Banner kaputt"}
 PRIVACY_POLICY_SECONDS = 10
 
 
@@ -268,6 +273,8 @@ def ask_label(code, searched):
     if code == "r":
         label["reject_level"] = int(ask_choice("  Auf welcher Ebene abgelehnt?", {"1": "1. Ebene (Banner)",
                                                                                  "2": "2. Ebene (Einstellungen)"}))
+    # independent of the code: a site with a pay option and a free way to reject is r and a cookiewall
+    label["cookiewall_seen"] = True if code == "w" else ask_yes_no("  Gibt es eine Bezahl-Option (z. B. Pur-Abo)?")
     label["settings_layer_available"] = ask_yes_no("  Gibt es eine 2. Ebene (Einstellungen)?")
     if label["settings_layer_available"]:
         label["purposes_preselected"] = ask_yes_no("  2. Ebene: Zwecke vorausgewählt?", allow_unknown=True)

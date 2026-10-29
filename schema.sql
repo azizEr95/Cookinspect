@@ -12,7 +12,7 @@
 CREATE TABLE schema_info (
     version         INTEGER NOT NULL
 );
-INSERT INTO schema_info (version) VALUES (2);   -- see database.MIGRATIONS
+INSERT INTO schema_info (version) VALUES (3);   -- see database.MIGRATIONS
 
 -- One run of prefilter.py, of the automatic or of the semi-automatic mode.
 CREATE TABLE run (
@@ -110,6 +110,8 @@ CREATE TABLE label (
     purposes_preselected        INTEGER,        -- V3, purposes on the 2nd layer
     vendors_preselected         INTEGER,        -- V3, vendors (separately)
     privacy_policy_searched     INTEGER,        -- looked for a way to reject in the privacy policy (at most 10 s)
+    cookiewall_seen             INTEGER,        -- a pay option was offered, independent of the code: w = no free way
+                                                -- to reject; r = free rejection exists, site is a cookiewall as well
     closed_with                 TEXT,           -- text of the button that closed the banner
     note                        TEXT,
     CHECK (outcome != 'rejected' OR reject_level IS NOT NULL)

@@ -26,18 +26,27 @@ def test_crosscheck_needs_the_examination_it_checks(tmp_path):
 
 
 def test_label_after_rejecting_on_the_second_layer(monkeypatch):
-    answers(monkeypatch, ["2", "j", "j", "?", "Auswahl speichern", "Schalter einzeln"])
+    answers(monkeypatch, ["2", "n", "j", "j", "?", "Auswahl speichern", "Schalter einzeln"])
     assert semi_automatic.ask_label("r", searched=False) == {
-        "outcome": "rejected", "privacy_policy_searched": False, "reject_level": 2,
+        "outcome": "rejected", "privacy_policy_searched": False, "reject_level": 2, "cookiewall_seen": False,
         "settings_layer_available": True, "purposes_preselected": True, "vendors_preselected": None,
         "closed_with": "Auswahl speichern", "note": "Schalter einzeln"}
 
 
-def test_label_cookiewall_without_second_layer(monkeypatch):
+def test_label_cookiewall_without_free_rejection(monkeypatch):
+    # code w: no free way to reject; the pay option is not asked again, it is set
     answers(monkeypatch, ["n", "Akzeptieren", ""])
     assert semi_automatic.ask_label("w", searched=False) == {
-        "outcome": "w", "privacy_policy_searched": False, "settings_layer_available": False,
-        "closed_with": "Akzeptieren", "note": None}
+        "outcome": "w", "privacy_policy_searched": False, "cookiewall_seen": True,
+        "settings_layer_available": False, "closed_with": "Akzeptieren", "note": None}
+
+
+def test_label_cookiewall_with_free_rejection_on_the_second_layer(monkeypatch):
+    # pay option and a free way to reject on the 2nd layer: code r with layer 2 (Matte, Appendix D),
+    # and the site is marked as cookiewall as well
+    answers(monkeypatch, ["2", "j", "j", "n", "n", "Auswahl speichern", ""])
+    label = semi_automatic.ask_label("r", searched=False)
+    assert (label["outcome"], label["reject_level"], label["cookiewall_seen"]) == ("rejected", 2, True)
 
 
 def test_wrong_input_is_asked_again(monkeypatch):

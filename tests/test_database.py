@@ -152,7 +152,7 @@ def test_nothing_is_overwritten(conn):
     run_id = database.insert_run(conn, METADATA)
     examination_id = database.insert_examination(conn, run_id, "example.de", "https://www.example.de", "primary", "ae")
     database.insert_label(conn, examination_id, "ae", "rejected", reject_level=2, settings_layer_available=True,
-                          purposes_preselected=True, vendors_preselected=False)
+                          purposes_preselected=True, vendors_preselected=False, cookiewall_seen=True)
     database.finish_examination(conn, examination_id, "done")   # closing fields may be set
     for statement in ("UPDATE label SET outcome = 'n'", "DELETE FROM label", "DELETE FROM examination",
                       "UPDATE examination SET operator = 'xy'", "UPDATE run SET mode = 'automatic'",
@@ -160,7 +160,8 @@ def test_nothing_is_overwritten(conn):
         with pytest.raises(sqlite3.IntegrityError):
             with conn:
                 conn.execute(statement)
-    assert conn.execute("SELECT outcome, reject_level, settings_layer_available FROM label").fetchone()[:] == ("rejected", 2, 1)
+    assert conn.execute("SELECT outcome, reject_level, settings_layer_available, cookiewall_seen FROM label"
+                        ).fetchone()[:] == ("rejected", 2, 1, 1)
 
 
 def test_label_checks(conn):
@@ -272,8 +273,10 @@ def test_old_file_is_migrated_when_opened(tmp_path):
     path = tmp_path / "old.sqlite"
     conn = sqlite3.connect(path)
     conn.executescript(database.SCHEMA_PATH.read_text().split("-- Screenshots of the banner")[0]
-                       .replace("VALUES (2);", "VALUES (1);"))
+                       .replace("VALUES (3);", "VALUES (1);")
+                       .replace("    cookiewall_seen             INTEGER,", "    -- (added in version 3)"))
     conn.close()
     conn = database.connect(str(path))
-    assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == 2
+    assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == database.SCHEMA_VERSION
     assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'screenshot'").fetchone()
+    assert "cookiewall_seen" in [r["name"] for r in conn.execute("PRAGMA table_info(label)")]
