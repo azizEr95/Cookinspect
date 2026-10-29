@@ -7,15 +7,15 @@
 <script>
   // Mini CMP after the TCF v2.2/v2.3 API (unchanged in v2.3): ping, addEventListener, removeEventListener, plus the
   // postMessage interface through the __tcfapiLocator frame. TC strings made with
-  // @iabtechlabtcf/core 1.5.22 (test GVL): no consent before, purposes 1-11 + vendors 755, 793
-  // after accepting. ?reload_after_choice=1 reloads the page right after the choice, as many
+  // @iabtechlabtcf/core 1.5.22 (test GVL): no consent before and after rejecting, purposes 1-11 +
+  // vendors 755, 793 after accepting. ?reload_after_choice=1 reloads the page right after the choice, as many
   // CMPs do (docs/entscheidungen.md, E2). The choice survives the reload in localStorage.
   (function () {
-    var BEFORE = "CQs2X0AQs2X0AEsABAENBkFgAAAAAAAAAAYgAAAAAAAA.IAAA.YAAAAAAAAAAA";
-    var ACCEPTED = "CQs2X0AQs2X0AEsABAENBkFgAP_gAAAAAAYgAAAAAAAA.IAAA.YAAAAAAAAAAA";
+    var BEFORE = "CQs2X0AQs2X0AEsABAENBkFgAAAAAAAAAAYgAAAAAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA";       // tests/tc_fixtures.json: no_consent
+    var ACCEPTED = "CQs2X0AQs2X0AEsABAENBkFgAP_gAAAAAAYgGMwAgF5gMZAAAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA";   // all_purposes (vendors 755, 793)
     var chosen = localStorage.getItem("pruefstand_choice");
     var listeners = {}, nextId = 1;
-    var state = chosen ? { eventStatus: "tcloaded", tcString: ACCEPTED } : { eventStatus: "tcloaded", tcString: BEFORE };
+    var state = { eventStatus: "tcloaded", tcString: chosen || BEFORE };   // the stored choice survives a reload
     function tcData(id) {
       return { tcString: state.tcString, eventStatus: state.eventStatus, cmpStatus: "loaded", cmpId: 300,
                cmpVersion: 1, gdprApplies: true, tcfPolicyVersion: 5, listenerId: id };
@@ -36,10 +36,13 @@
       }, call.parameter);
     });
     if (!chosen) setTimeout(function () { state.eventStatus = "cmpuishown"; fire(); }, 800);
-    window.__userClick = function () {
-      state.eventStatus = "useractioncomplete"; state.tcString = ACCEPTED;
-      localStorage.setItem("pruefstand_choice", ACCEPTED);
-      document.cookie = "euconsent-v2=" + ACCEPTED + "; path=/";
+    else document.addEventListener("DOMContentLoaded", function () { document.getElementById("banner").style.display = "none"; });
+    window.__userClick = function (choice) {
+      var chosenString = choice === "reject" ? BEFORE : ACCEPTED;   // rejecting: no consent
+      state.eventStatus = "useractioncomplete"; state.tcString = chosenString;
+      localStorage.setItem("pruefstand_choice", chosenString);
+      document.cookie = "euconsent-v2=" + chosenString + "; path=/";
+      document.getElementById("banner").style.display = "none";
       fire();
       if (location.search.indexOf("reload_after_choice=1") >= 0) setTimeout(function () { location.reload(); }, 200);
     };
@@ -47,7 +50,11 @@
 </script>
 </head><body>
 <iframe name="__tcfapiLocator" style="display:none"></iframe>
-<button id="accept" onclick="__userClick()">Alle akzeptieren</button>
+<div id="banner" style="border: 2px solid #333; padding: 1em; margin: 1em 0">
+  Prüfstand-Banner
+  <button id="accept" onclick="__userClick('accept')">Alle akzeptieren</button>
+  <button id="reject" onclick="__userClick('reject')">Ablehnen</button>
+</div>
 <iframe id="third" src="http://127.0.0.1:8002/frame.html" width="300" height="120"></iframe>
 <script>
   var V1 = "BOEFEAyOEFEAyAAABAENAI4AAAB9vABAASA";   // example string of the TCF v1.1 specification

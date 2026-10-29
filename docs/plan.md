@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-29, Branch `tcf22-port`, letzter Commit `d76561e` (Phase 6). Nichts gepusht.
+Stand: 2026-10-29, Branch `tcf22-port`, Phase 7 fertig (Test an echten Seiten durch die Person steht aus). Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -24,13 +24,13 @@ Stand: 2026-10-29, Branch `tcf22-port`, letzter Commit `d76561e` (Phase 6). Nich
 | 4 | Decoder, GVL der String-Version, CMP-Liste | fertig | `cb2227c`, `226d7e0` |
 | 5 | SQLite-Schema, `database.py`, Zusammenführen | fertig | `d850f00`, `f28b406` |
 | 6 | Automatischer Modus (V1, Weitergabe vorher, Cookiewall-Heuristik) | fertig | `d76561e` |
-| **7** | **Halbautomatischer Modus (V2–V4)** | **als Nächstes** | |
-| 8 | Verstoß-Logik und Auswertung | offen | |
+| 7 | Halbautomatischer Modus (V2–V4), `run_list.py` als Einstieg | fertig, Test an 2–3 echten Seiten durch die Person offen | siehe `git log` |
+| **8** | **Verstoß-Logik und Auswertung** | **als Nächstes** | |
 | 9 | Unit-Tests vervollständigen | offen | |
 | 10 | Testlauf an 10 GQ3LK-Seiten, beide Modi | offen | |
 | 11 | Doku (README, Abweichungen vervollständigen) | offen | |
 
-Restaufwand geschätzt: ca. 32–48 h (7: 8–12, 8: 11–15, 9: 4–6, 10: 4–6, 11: 3–5).
+Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–5).
 
 ## Was es schon gibt (Dateien)
 
@@ -50,26 +50,15 @@ Restaufwand geschätzt: ca. 32–48 h (7: 8–12, 8: 11–15, 9: 4–6, 10: 4–
 | `split_sites.py` | Aufteilung der TCF-Seiten auf zwei Personen (`site_assignment.csv`) |
 | `automatic.py` | automatischer Modus: 2 Sitzungen, Snapshot „vorher“ nach Laden + 3 s |
 | `cookiewall.py` | Cookiewall-**Heuristik** (Zustimmen + Bezahlen im Dialog, contentpass) |
+| `semi_automatic.py` | halbautomatischer Modus: Anleitung nach Anhang D, Codes, Label, Bildschirmfotos, blinde Gegenprüfung, Fortsetzen |
+| `run_list.py` | gemeinsamer Einstieg: `run_list.py prefilter` bzw. `automatic` bzw. `semi-automatic` |
 | `tests/` | 81 Unit-Tests (`venv/bin/python -m pytest -q`); Live-Prüfungen `check_capture.py` (lokaler Prüfstand), `check_capture_real.py` |
 
-Noch alt und zu ersetzen: `cookinspect.py`, `iab_data_collection.py`, `utils.py`, `extract_results.py`, `tests/tests.sh`; `run_list.py` ruft für den halbautomatischen Modus noch `cookinspect.py` auf. README ist veraltet (PostgreSQL, `run.sh`).
+Noch alt und zu ersetzen: `extract_results.py` (Phase 8; importiert das entfernte `utils.py`, nicht lauffähig). README ist veraltet (PostgreSQL, `run.sh`).
 
-## Phase 7: halbautomatischer Modus (als Nächstes)
+## Phase 7: halbautomatischer Modus (fertig)
 
-Ziel: V2–V4 wie bei Matte. Ein Mensch klickt, das Werkzeug liest mit. Der Messcode klickt nie.
-
-- Neues Skript (z. B. `semi_automatic.py`), Eingabe `site_assignment.csv`; `--operator ae` wählt die eigenen Seiten (`first_operator`). `--test` / `--purpose`, `--limit` (Standard: aus, `SEMI_AUTOMATIC_LIMIT`).
-- Pro Seite eine `examination` (`role = primary`), Ablauf nach CLAUDE.md, Abschnitt „Ablauf“:
-  1. Sitzung „reject“: frischer Browser, laden. Kein Banner → bis zu 3-mal neu laden (`MAX_BANNER_RELOADS`); `banner_shown` und `banner_reloads` pro Sitzung speichern.
-  2. Snapshot `before` nach Laden + 3 s.
-  3. Person lehnt nach Anhang D ab. Vorher `mark()`; dann `wait_for_event("useractioncomplete", USERACTIONCOMPLETE_TIMEOUT, after=mark)`. Kein Ereignis → `useractioncomplete_received = 0` und trotzdem auslesen.
-  4. Snapshot `after_reject`; nach 3 s neu laden; Snapshot `after_reject_reload`.
-  5. Sitzung „accept“, dieselben Schritte mit Akzeptieren (`after_accept`, `after_accept_reload`).
-  6. Bei Code `n`: keine Ablehnen-Sitzung, direkt akzeptieren. Bei `w`: nichts klicken.
-- Eingabe im Terminal: Ergebnis (`rejected`, `n`, `b`, `x`, `w`; `p` = vorausgewählt wird als eigenes Feld gespeichert), Ebene des Ablehnens (1/2), `settings_layer_available`, V3 Zwecke und Vendoren vorausgewählt getrennt, `privacy_policy_searched`, `closed_with`, Notiz → Tabelle `label`.
-- Gegenprüfung (V-C): `--crosscheck` mit Liste der Stichprobe; `role = crosscheck`, `crosscheck_of`, blind (erstes Ergebnis nicht anzeigen). Neuprüfung aller Seiten einer CMP: `role = recheck`. Korrektur: `role = correction`, `correction_of`.
-- `run_list.py` für den halbautomatischen Modus ablösen.
-- Test: lokaler Prüfstand (`tests/site`, Klick im Testskript) und 10 Test-Domains.
+`semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code, Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
 
 ## Phase 8: Verstoß-Logik und Auswertung
 
@@ -90,6 +79,7 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
   - **Vendor-LI bei Vendoren mit nur Special Purposes** (laut GVL des Strings) getrennt zählen, nicht als berechtigtes Interesse; Bit nach dem 1. März 2026 noch gesetzt = alter Umweg (siehe `docs/abweichungen.md`).
   - Strings mit `policy_version_outdated`, `disclosed_vendors_missing_after_v23_deadline`, ungültiger CMP-ID ausweisen.
   - Sperren (`blocked`) und `empty_tc_data` zählen.
+  - **E7:** TCF-API ohne TC-String (z. B. amazon.de) bei V1 als „nicht auswertbar“ getrennt ausweisen, nicht als „kein Verstoß“.
 - Trichter und Vergleich mit Matte Tab. II/III; Spalte Original-Cookinspect für Tab. II maßgeblich.
 - Alte `extract_results.py` ersetzen.
 

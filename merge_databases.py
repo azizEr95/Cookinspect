@@ -15,8 +15,9 @@ import sys
 from database import connect
 
 # parents before children, so that the foreign keys hold
-TABLES = ["run", "website", "prefilter_result", "examination", "label", "session", "tc_string", "tc_string_entry",
-          "tc_publisher_restriction", "tcf_event", "snapshot", "observation", "request", "request_signal"]
+TABLES = ["run", "website", "prefilter_result", "examination", "label", "session", "screenshot", "tc_string",
+          "tc_string_entry", "tc_publisher_restriction", "tcf_event", "snapshot", "observation", "request",
+          "request_signal"]
 
 
 def schema_version(conn, schema):
@@ -24,6 +25,7 @@ def schema_version(conn, schema):
 
 
 def merge(target_path, source_path):
+    connect(source_path).close()   # brings an older source file up to the current schema version
     conn = connect(target_path)
     conn.execute("ATTACH DATABASE ? AS source", (str(source_path),))
     if schema_version(conn, "source") != schema_version(conn, "main"):

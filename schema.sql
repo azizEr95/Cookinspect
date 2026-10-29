@@ -12,7 +12,7 @@
 CREATE TABLE schema_info (
     version         INTEGER NOT NULL
 );
-INSERT INTO schema_info (version) VALUES (1);
+INSERT INTO schema_info (version) VALUES (2);   -- see database.MIGRATIONS
 
 -- One run of prefilter.py, of the automatic or of the semi-automatic mode.
 CREATE TABLE run (
@@ -273,6 +273,17 @@ CREATE TABLE request_signal (
     kind            TEXT NOT NULL CHECK (kind IN ('tc_string', 'gdpr_flag', 'addtl_consent', 'macro', 'empty', 'other')),
     tc_string_id    TEXT REFERENCES tc_string(id)
 );
+
+-- Screenshots of the banner in the semi-automatic mode: before the action and after closing.
+-- The files lie in the run directory (data/semi-automatic-<purpose>-<time>/screenshots/).
+CREATE TABLE screenshot (
+    id              TEXT PRIMARY KEY,
+    session_id      TEXT NOT NULL REFERENCES session(id),
+    moment          TEXT NOT NULL CHECK (moment IN ('before_action', 'after_closing')),
+    path            TEXT NOT NULL,
+    taken_at        TEXT NOT NULL
+);
+CREATE TRIGGER screenshot_no_delete BEFORE DELETE ON screenshot BEGIN SELECT RAISE(ABORT, 'screenshot: rows are never deleted'); END;
 
 CREATE INDEX idx_examination_domain ON examination(domain);
 CREATE INDEX idx_session_examination ON session(examination_id);

@@ -75,7 +75,7 @@ def examination_with_sessions(conn, run_id, reject_tc, accept_tc, operator="ae",
 
 
 def test_schema_and_foreign_keys(conn):
-    assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == 1
+    assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == database.SCHEMA_VERSION
     with pytest.raises(sqlite3.IntegrityError):
         with conn:
             database.insert(conn, "examination", {"id": "x", "run_id": "missing", "domain": "nowhere.de",
@@ -265,3 +265,15 @@ def test_split_sites_alternates_within_each_cmp():
     assigned = {s["domain"]: s["first_operator"] for s in split(sites, ["ae", "xy"])}
     # cmp '' first (f), then 6 (a, b, d), then 345 (c, e), in turn
     assert assigned == {"f.de": "ae", "a.de": "xy", "b.de": "ae", "d.de": "xy", "c.de": "ae", "e.de": "xy"}
+
+
+def test_old_file_is_migrated_when_opened(tmp_path):
+    # a file with schema version 1 (as written before Phase 7) gets the table screenshot
+    path = tmp_path / "old.sqlite"
+    conn = sqlite3.connect(path)
+    conn.executescript(database.SCHEMA_PATH.read_text().split("-- Screenshots of the banner")[0]
+                       .replace("VALUES (2);", "VALUES (1);"))
+    conn.close()
+    conn = database.connect(str(path))
+    assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == 2
+    assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'screenshot'").fetchone()

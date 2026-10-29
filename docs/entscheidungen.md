@@ -101,3 +101,7 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 - Die Erkennung im automatischen Modus (`cookiewall.py`, `session.cookiewall_suspected`, `examination.cookiewall_suspected`) ist eine **Heuristik**. Sie wird in Ergebnissen immer so bezeichnet.
 - Phase 8 gleicht sie mit dem Code `w` der Personen ab, für alle Seiten, die in beiden Modi geprüft wurden: Vierfeldertafel (Heuristik ja/nein × `w` ja/nein), Übereinstimmung, Präzision und Trefferquote der Heuristik, dazu die Liste der Abweichungen mit dem Grund der Heuristik.
 - Maßgeblich für die Auswertung ist das manuelle `w`; die Heuristik dient der Einordnung der automatischen Zahlen und der Entscheidung, ob die Forschungsfrage erweitert wird.
+
+## E7 (2026-10-29, für Phase 8 vorgemerkt): TCF-API ohne TC-String bei V1
+
+Fälle wie amazon.de (CMP 376): `__tcfapi` antwortet, der Listener liefert aber kein `tcString` (`observation.status = empty_tc_data` oder `no_tc_string`). Bei V1 werden sie **getrennt als „nicht auswertbar“** ausgewiesen, nicht als „kein Verstoß“. Gilt genauso, wenn nur einer der beiden Vorher-Snapshots einen String hat.

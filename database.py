@@ -22,6 +22,9 @@ import decoder
 from capture import registrable_domain
 
 SCHEMA_PATH = config.REPO_DIR / "schema.sql"
+SCHEMA_VERSION = 2
+# Older files are brought up to date when opened; a migration only adds tables or columns.
+MIGRATIONS_DIR = config.REPO_DIR / "migrations"   # <version>.sql: from version - 1 to version
 
 # decoded field of decoder.py -> field in tc_string_entry
 ENTRY_FIELDS = {
@@ -60,7 +63,17 @@ def connect(path):
     conn.execute("PRAGMA foreign_keys = ON")
     if not conn.execute("SELECT name FROM sqlite_master WHERE name = 'schema_info'").fetchone():
         conn.executescript(SCHEMA_PATH.read_text())
+    migrate(conn)
     return conn
+
+
+def migrate(conn):
+    version = conn.execute("SELECT version FROM schema_info").fetchone()[0]
+    while version < SCHEMA_VERSION:
+        version += 1
+        conn.executescript((MIGRATIONS_DIR / f"{version}.sql").read_text())
+        with conn:
+            conn.execute("UPDATE schema_info SET version = ?", (version,))
 
 
 def insert(conn, table, row):
@@ -177,11 +190,13 @@ def insert_label(conn, examination_id, operator, outcome, reject_level=None, set
             "privacy_policy_searched": as_int(privacy_policy_searched), "closed_with": closed_with, "note": note})
 
 
-def insert_session(conn, examination_id, kind, url, number=1):
+def insert_session(conn, examination_id, kind, url, number=1, started_at=None):
+    """started_at: when the browser was started, if the session is stored only later (in the
+    semi-automatic mode the kind is known only after the person entered the code)."""
     session_id = new_id()
     with conn:
         insert(conn, "session", {"id": session_id, "examination_id": examination_id, "kind": kind,
-                                 "number": number, "url": url, "started_at": now()})
+                                 "number": number, "url": url, "started_at": started_at or now()})
     return session_id
 
 
@@ -189,6 +204,12 @@ SESSION_CLOSING_FIELDS = ("loaded", "load_attempts", "load_errors", "final_url",
                           "block_reason", "cookiewall_suspected", "cookiewall_reason", "banner_shown", "banner_reloads",
                           "useractioncomplete_received", "useractioncomplete_wait_s", "remove_listener_json")
 SESSION_FLAGS = {"loaded", "blocked", "cookiewall_suspected", "banner_shown", "useractioncomplete_received"}
+
+
+def insert_screenshot(conn, session_id, moment, path):
+    with conn:
+        insert(conn, "screenshot", {"id": new_id(), "session_id": session_id, "moment": moment,
+                                    "path": str(path), "taken_at": now()})
 
 
 def finish_session(conn, session_id, remove_listener=None, **fields):

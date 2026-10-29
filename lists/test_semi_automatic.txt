@@ -1,0 +1,4 @@
+# Test des halbautomatischen Modus an 3 TCF-Seiten (Phase 7)
+t-online.de
+amazon.de
+bild.de

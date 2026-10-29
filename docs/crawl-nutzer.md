@@ -139,7 +139,11 @@ Jede Person arbeitet an ihrem eigenen Mac, mit eigenem Crawl-Nutzer (Abschnitte 
    ```
    Innerhalb jeder CMP werden die Seiten nach Rang abwechselnd verteilt. So sieht jede Person jede CMP, und die Aufteilung ist ohne Zufall reproduzierbar. Ergebnis: `site_assignment.csv` (wer prüft welche Seite zuerst) und `site_assignment.json` (Prüfsumme von `tcf_sites.csv`, Personen, Regel).
 3. **Weitergeben an die zweite Person:** `tcf_sites.csv`, `site_assignment.csv` und `site_assignment.json` aus diesem Ordner, z. B. per AirDrop oder USB-Stick. Die zweite Person legt sie in ihren eigenen Ordner `~/Cookinspect/data/prefilter-messung-<Zeit>/`, unter demselben Namen. Sie startet **keinen** eigenen Vorfilter-Messlauf.
-4. Beide messen auf ihrem eigenen Mac. Jede Person hat danach ihr eigenes `data/messung.sqlite`.
+4. Beide messen auf ihrem eigenen Mac, jede Person nur ihre Seiten aus `site_assignment.csv`:
+   ```sh
+   venv/bin/python run_list.py semi-automatic data/prefilter-messung-<Zeit>/site_assignment.csv --operator ae --purpose messung
+   ```
+   (Person `xy` entsprechend mit `--operator xy`.) Das Terminal führt durch Anhang D und fragt die Codes ab. Abbrechen mit Ctrl+C ist jederzeit möglich; beim nächsten Start werden fertige Seiten übersprungen. Jede Person hat danach ihr eigenes `data/messung.sqlite`; die Bildschirmfotos liegen in `data/semi-automatic-messung-<Kürzel>-<Zeit>/screenshots/`.
 5. **Zusammenführen:** Jede Person gibt ihre Datei weiter, z. B. als `messung-ae.sqlite` und `messung-xy.sqlite`. Dann auf einem Mac:
    ```sh
    venv/bin/python merge_databases.py data/messung-merged.sqlite messung-ae.sqlite messung-xy.sqlite
