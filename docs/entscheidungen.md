@@ -45,6 +45,17 @@ Das Performance-Log mit `--disable-features=IsolateOrigins,site-per-process` erf
 - Der Zeitpunkt des BiDi-Preload-Skripts relativ zu den Seitenskripten ist lokal nur für die CDP-Variante gemessen (`pageSawInjection = true`); für BiDi wird das in den Tests von Phase 3 nachgeholt.
 - Nach unserem eigenen Reload kam auf wetteronline.de `tcloaded` zweimal (zwei Listener-Registrierungen aus zwei Dokumenten). Bei der Auswertung pro Phase muss das Dokument (Navigation) mitgespeichert werden.
 
+### Ergebnis der Prüfung in Phase 3 (2026-10-29)
+
+Geprüft mit dem lokalen Prüfstand (`tests/check_capture.py`, Server-Log als Referenz) und an den 5 TCF-Seiten des Vorfilter-Tests (`tests/check_capture_real.py`, ohne Klick).
+
+| Punkt | Ergebnis |
+|---|---|
+| verschachtelte iframes | erfasst: Requests aus einem iframe im fremden iframe kommen mit eigenem Browsing-Context an. Lokal 25 von 25 Requests am Server auch in `capture.py` |
+| Service Worker | erfasst: Requests des Service Workers kommen über BiDi an, aber **ohne Browsing-Context**. `capture.py` markiert sie als `source = worker` (nicht „iframe“) |
+| Zeitpunkt des Preload-Skripts | lokal vor dem ersten Seitenskript (19 ms gegenüber 20 ms nach Beginn des Dokuments). Real: Skript nach 25–153 ms aktiv, `__tcfapi` nach 97–278 ms gefunden. Das Skript fragt alle 50 ms nach `__tcfapi`. Ereignisse vor der Anmeldung entgehen ihm, den aktuellen Stand nicht: Die CMP ruft den Listener beim Anmelden sofort mit dem aktuellen Zustand auf (TCF-API, `addEventListener`) |
+| zwei Dokumente | jede Nachricht trägt URL und Zeitpunkt des Dokuments; die Auswertung kann Ereignisse daher pro Dokument trennen |
+
 ## E2 (Phase 1, 2026-10-29): Ereignisse der CMP sofort aus der Seite holen (Befund K3)
 
 **Befund (für den Methodenteil):** Manche CMPs laden die Seite direkt nach der Wahl der Nutzerin oder des Nutzers neu. Ein Messskript, das die `__tcfapi`-Ereignisse in der Seite sammelt (z. B. in einer Variable des `window`) und sie erst später ausliest, verliert dabei das Ereignis mit `eventStatus = useractioncomplete`. Nach dem Neuladen ist nur noch `tcloaded` aus dem neuen Dokument sichtbar. Beobachtet am 2026-10-29 auf wetteronline.de (CMP Sourcepoint) nach „akzeptieren & weiter“, mit Chrome for Testing 156.0.8078.73. Lokal mit einer Testseite nachgestellt, die 200 ms nach der Wahl neu lädt (`spikes/cdp/site/top.html?reload_after_choice=1`).

@@ -18,6 +18,7 @@ Abweichungen dieser Neuimplementierung (TCF v2.2) vom Paper von Matte et al. (20
 | TCF-Erkennung | `__cmp()` ist definiert (Paper V-A) | nach dem Laden und weiteren 3 s ist `__tcfapi` definiert **und** antwortet auf `ping`; `__tcfapi` ohne Antwort wird im Trichter eigens gezählt | v2.2-API; ein bloßer Stub ohne CMP soll nicht als TCF-Banner zählen |
 | Trichter, Spalte „erlaubt“ | eine Entscheidung (Original-Code) | drei Entscheidungen nebeneinander (Protego, urllib, Original-Cookinspect); geladen wird nur, was Protego erlaubt | Für den Vergleich mit Tab. II zählt die Spalte „Original-Cookinspect“. Seiten, die nur der Original-Code erlaubt (z. B. robots.txt mit 5xx), werden nicht geladen; ihre Zahl steht im Trichter („nicht geladen, weil Protego verbietet“) |
 | Bot-Sperren | nicht erfasst | heuristisch erkannt (Status 401/403/429, Texte wie „Access Denied“, HTML-Merkmale von Bot-Managern wie Akamai, Cloudflare, DataDome, PerimeterX, Imperva, leere Seite) und im Trichter gezählt; nicht umgangen. Der TCF-Anteil steht zweimal im Trichter: mit gesperrten Seiten im Nenner (vergleichbar mit Matte) und ohne | Keine Tricks gegen Bot-Erkennung (CLAUDE.md); Sperren sollen sichtbar sein. Beispiel: mobile.de liefert am 2026-10-29 eine Akamai-Seite mit Status 200 und ohne sichtbaren Text |
+| Drittanbieter | – | Request an eine andere registrierbare Domain als die Website (Public Suffix List von tldextract, mitgelieferter Stand, kein Download), z. B. `cdn.privacy-mgmt.com` bei bild.de | reproduzierbar; Version von tldextract steht in den Metadaten |
 | Shared Cookie / consensu.org | Kanal ③ | entfällt; stattdessen Erstanbieter-Cookie `euconsent-v2` und localStorage | in TCF v2 gibt es keinen globalen Consent mehr |
 
 ## Befunde zu robots.txt
@@ -39,4 +40,7 @@ Folge für den Vergleich mit Matte: Jede Website mit einer Regel wie `Disallow: 
 | Grenze | Auswirkung |
 |---|---|
 | Request-Bodies über 1 MB (Grenze des BiDi-Data-Collectors) werden nicht gespeichert, sondern als „Body zu groß“ markiert. | Ein Consent-String in einem so großen POST-Body würde nicht erkannt. |
+| Requests von Service Workern haben in BiDi keinen Browsing-Context. | Sie werden erfasst, aber keinem Frame zugeordnet (`source = worker`). |
+| Der Listener in Kanal ① fragt alle 50 ms nach `__tcfapi`. | Zwischenstände vor der Anmeldung (z. B. ein frühes `tcloaded`) können fehlen; der Stand zum Zeitpunkt der Anmeldung kommt immer an. |
+| Manche CMPs rufen den Listener mit leerem `tcData` auf (amazon.de, CMP 376, 2026-10-29: kein `eventStatus`, kein `tcString`, keine `listenerId`; ping meldet `displayStatus: hidden`). | Kein TC-String über Kanal ①; das Ereignis wird als `emptyTcData` markiert und nicht als „keine Zustimmung“ gewertet. `removeEventListener` ist dort nicht möglich (keine `listenerId`). |
 | Kanal ② (Dritt-Position) ist nur messbar, wenn die Seite ein fremdes iframe enthält. | Ohne fremdes iframe: „nicht messbar“; die Quote wird pro Phase ausgewiesen. |

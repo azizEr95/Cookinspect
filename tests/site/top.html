@@ -1,0 +1,62 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Prüfstand Erstanbieter (localhost:8001)</title>
+<script>
+  // First page script: when did it run, compared with the preload script (performance.now)?
+  window.__firstPageScriptAt = performance.now();
+</script>
+<script>
+  // Mini CMP after the TCF v2.2 API: ping, addEventListener, removeEventListener, plus the
+  // postMessage interface through the __tcfapiLocator frame. TC strings made with
+  // @iabtechlabtcf/core 1.5.22 (test GVL): no consent before, purposes 1-11 + vendors 755, 793
+  // after accepting. ?reload_after_choice=1 reloads the page right after the choice, as many
+  // CMPs do (docs/entscheidungen.md, E2). The choice survives the reload in localStorage.
+  (function () {
+    var BEFORE = "CQs2X0AQs2X0AEsABAENBkFgAAAAAAAAAAYgAAAAAAAA.IAAA.YAAAAAAAAAAA";
+    var ACCEPTED = "CQs2X0AQs2X0AEsABAENBkFgAP_gAAAAAAYgAAAAAAAA.IAAA.YAAAAAAAAAAA";
+    var chosen = localStorage.getItem("pruefstand_choice");
+    var listeners = {}, nextId = 1;
+    var state = chosen ? { eventStatus: "tcloaded", tcString: ACCEPTED } : { eventStatus: "tcloaded", tcString: BEFORE };
+    function tcData(id) {
+      return { tcString: state.tcString, eventStatus: state.eventStatus, cmpStatus: "loaded", cmpId: 300,
+               cmpVersion: 1, gdprApplies: true, tcfPolicyVersion: 5, listenerId: id };
+    }
+    function fire() { Object.keys(listeners).forEach(function (id) { listeners[id](tcData(Number(id)), true); }); }
+    window.__tcfapi = function (cmd, version, cb, param) {
+      if (cmd === "ping") cb({ gdprApplies: true, cmpLoaded: true, cmpStatus: "loaded", apiVersion: "2.2", cmpId: 300 }, true);
+      else if (cmd === "addEventListener") { var id = nextId++; listeners[id] = cb; cb(tcData(id), true); }
+      else if (cmd === "removeEventListener") { var ok = param in listeners; delete listeners[param]; cb(ok); }
+    };
+    window.__pruefstandListenerCount = function () { return Object.keys(listeners).length; };
+    window.addEventListener("message", function (e) {
+      var data = e.data; if (typeof data === "string") { try { data = JSON.parse(data); } catch (x) { return; } }
+      if (!data || !data.__tcfapiCall) return;
+      var call = data.__tcfapiCall;
+      window.__tcfapi(call.command, call.version, function (ret, success) {
+        e.source.postMessage({ __tcfapiReturn: { returnValue: ret, success: success, callId: call.callId } }, "*");
+      }, call.parameter);
+    });
+    if (!chosen) setTimeout(function () { state.eventStatus = "cmpuishown"; fire(); }, 800);
+    window.__userClick = function () {
+      state.eventStatus = "useractioncomplete"; state.tcString = ACCEPTED;
+      localStorage.setItem("pruefstand_choice", ACCEPTED);
+      document.cookie = "euconsent-v2=" + ACCEPTED + "; path=/";
+      fire();
+      if (location.search.indexOf("reload_after_choice=1") >= 0) setTimeout(function () { location.reload(); }, 200);
+    };
+  })();
+</script>
+</head><body>
+<iframe name="__tcfapiLocator" style="display:none"></iframe>
+<button id="accept" onclick="__userClick()">Alle akzeptieren</button>
+<iframe id="third" src="http://127.0.0.1:8002/frame.html" width="300" height="120"></iframe>
+<script>
+  var V1 = "BOEFEAyOEFEAyAAABAENAI4AAAB9vABAASA";   // example string of the TCF v1.1 specification
+  fetch("/px?gdpr=1&gdpr_consent=" + localStorage.getItem("pruefstand_choice"));
+  fetch("http://127.0.0.1:8002/px?gdpr=0&gdpr_consent=&addtl_consent=1~89.2140");
+  fetch("http://127.0.0.1:8002/px?gdpr_consent=" + V1 + "&macro=${GDPR_CONSENT_755}");
+  fetch("http://127.0.0.1:8002/collect", { method: "POST", headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ imp: [{ id: "1" }], user: { ext: { consent: "CQs2X0AQs2X0AEsABAENBkFgAAAAAAAAAAYgAAAAAAAA.IAAA.YAAAAAAAAAAA" } },
+                           regs: { ext: { gdpr: 1 } } }) });
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+</script>
+</body></html>

@@ -42,3 +42,10 @@ USERACTIONCOMPLETE_TIMEOUT = 10         # seconds to wait for eventStatus userac
 MAX_BANNER_RELOADS = 3                  # reload up to 3 times when no banner appears (Appendix D)
 SEMI_AUTOMATIC_LIMIT = None             # optional upper bound of sites for the semi-automatic part, for tests;
                                         # None (default) = all TCF sites of the selected domains, as Matte did
+
+# Capture (capture.py)
+MAX_BODY_SIZE = 1_000_000               # bytes per request body kept by the BiDi data collector;
+                                        # larger bodies are marked "too_large" (docs/abweichungen.md)
+TCF_LISTENER_WAIT = 30                  # seconds the preload script waits for __tcfapi in each document
+CHANNEL_2_WAIT = 2                      # seconds to wait for answers of the CMP to __tcfapiCall (channel 2)
+CHANNEL_2_MAX_FRAMES = 5                # third-party iframes tried at most for channel 2
