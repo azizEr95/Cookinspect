@@ -1,11 +1,14 @@
-"""One entry point for the three modes; each mode visits all sites of the list itself, with a
-fresh browser per session. The old cookinspect.py (one process per domain) is no longer needed.
+"""One entry point for the three crawl modes and the evaluation; each crawl mode visits all
+sites of the list itself, with a fresh browser per session. The old cookinspect.py (one process per domain) is no longer needed.
 
     venv/bin/python run_list.py prefilter LIST.csv --purpose vorab
     venv/bin/python run_list.py automatic data/prefilter-vorab-<time>/tcf_sites.csv --purpose vorab
     venv/bin/python run_list.py semi-automatic data/prefilter-messung-<time>/site_assignment.csv --operator ae --purpose messung
+    venv/bin/python run_list.py crosscheck select --operators ae,xy --purpose messung
+    venv/bin/python run_list.py evaluate --purpose messung
 
-All further arguments go to the mode (see prefilter.py, automatic.py, semi_automatic.py), e.g.
+All further arguments go to the mode (see prefilter.py, automatic.py, semi_automatic.py,
+crosscheck.py, evaluate.py), e.g.
 --test, --limit N. Without --test a run is a real crawl and is refused unless the setup is
 right (run_metadata.check_environment and check_setup).
 
@@ -17,7 +20,8 @@ import json
 import sys
 from pathlib import Path
 
-MODES = {"prefilter": "prefilter", "automatic": "automatic", "semi-automatic": "semi_automatic"}
+MODES = {"prefilter": "prefilter", "automatic": "automatic", "semi-automatic": "semi_automatic",
+         "evaluate": "evaluate", "crosscheck": "crosscheck"}
 
 
 def read_domains(path):

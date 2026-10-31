@@ -247,7 +247,7 @@ class Session:
                            useractioncomplete_wait_s=round(time.monotonic() - waited, 1))
         if event is None:
             print(f"  Kein useractioncomplete innerhalb von {config.USERACTIONCOMPLETE_TIMEOUT} s; wird trotzdem ausgelesen"
-                  " und als „kein useractioncomplete“ gespeichert. Maßgeblich ist dann eher der Snapshot nach dem Reload.")
+                  " und als „kein useractioncomplete“ gespeichert. V4 wird auf dem Snapshot nach dem Reload berechnet.")
         self.screenshot("after_closing")
         self.snapshots[f"after_{kind}"] = self.capture.snapshot(f"after_{kind}")
         output.show(describe(f"nach {'Ablehnen' if kind == 'reject' else 'Akzeptieren'}",
