@@ -162,7 +162,7 @@ def describe(label, snapshot, useractioncomplete=None):
     latest = snapshot["channel_1"]["latest_event"] or {}
     tc_string = latest.get("tcString")
     if latest.get("emptyTcData"):
-        channel_1 = "Kanal ① leeres tcData"
+        channel_1 = "Kanal 1 leeres tcData"
     elif tc_string:
         decoded = decode_tc_strings([tc_string])[0]
         if decoded.get("decoded"):
@@ -171,11 +171,11 @@ def describe(label, snapshot, useractioncomplete=None):
         else:
             channel_1 = f"TC-String v{decoded.get('version')} nicht dekodiert ({decoded.get('reason')})"
     else:
-        channel_1 = "Kanal ① kein TC-String" if snapshot["channel_1"]["tcfapi_seen"] else "kein __tcfapi"
+        channel_1 = "Kanal 1 kein TC-String" if snapshot["channel_1"]["tcfapi_seen"] else "kein __tcfapi"
     third_party = sum(1 for r in snapshot["requests"]["with_signals"] if r["third_party"]
                       for s in r["signals"] if s["kind"] == "tc_string")
     storage = sum(len(item["tc_strings"]) for item in snapshot["storage"]["cookies"] + snapshot["storage"]["local_storage"])
-    line = (f"{label}: {channel_1} | Kanal ② {snapshot['channel_2']['status']} | TC-Strings im Speicher {storage}"
+    line = (f"{label}: {channel_1} | Kanal 2 {snapshot['channel_2']['status']} | TC-Strings im Speicher {storage}"
             f" | an Dritte {third_party}")
     if useractioncomplete is not None:
         line += f" | useractioncomplete {'ja' if useractioncomplete else 'NEIN'}"

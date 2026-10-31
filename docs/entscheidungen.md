@@ -4,7 +4,7 @@
 
 **Frage:** Lassen sich alle Kanäle von Cookinspect ohne die 7 MV2-Erweiterungen erfassen, über das Chrome DevTools Protocol (CDP) und Selenium?
 
-**Ergebnis:** Ja, aber nicht mit CDP allein. Wir nehmen **WebDriver BiDi** (W3C-Standard, in Selenium 4.51 und chromedriver 156 eingebaut) für Netzwerk und Listener, dazu klassisches WebDriver für Kanal ②. Erweiterungen braucht es keine, Site Isolation bleibt an, der Browser bleibt unverändert.
+**Ergebnis:** Ja, aber nicht mit CDP allein. Wir nehmen **WebDriver BiDi** (W3C-Standard, in Selenium 4.51 und chromedriver 156 eingebaut) für Netzwerk und Listener, dazu klassisches WebDriver für Kanal 2. Erweiterungen braucht es keine, Site Isolation bleibt an, der Browser bleibt unverändert.
 
 **Aufbau des Tests** (`spikes/cdp/`, Wegwerfcode):
 
@@ -22,7 +22,7 @@
 | K1 | Requests aus fremden iframes (eigener Prozess) | **nein**: Das Performance-Log von chromedriver enthält nur den Hauptframe. 4 von 8 markierten Requests fehlen. | BiDi `network.beforeRequestSent`: 8/8, mit Browsing-Context des iframes | lokal 8/8; wetteronline.de nach Akzeptieren 1.265 Consent-Requests aus iframes |
 | K2 | POST-Bodies (JSON, Formular, `sendBeacon`) | ja (Hauptframe) | BiDi `network.addDataCollector` mit Typ `request` und `network.getData`: alle Bodies, auch aus dem iframe | lokal 8/8; wetteronline.de 19 POST mit OpenRTB-Body (Prebid) |
 | K3 | Listener vor den Seitenskripten, aktiv nach Reload | ja (`Page.addScriptToEvaluateOnNewDocument`), **aber**: Die Ereignisse liegen im `window` und gehen verloren, wenn die CMP die Seite nach der Wahl neu lädt. Auf wetteronline.de fehlte so `useractioncomplete`. | BiDi `script.addPreloadScript` mit Kanal (`script.message`): Jedes Ereignis geht sofort an Python und übersteht Reloads | lokal: `useractioncomplete` vor dem Reload durch die Seite erhalten; wetteronline.de: `cmpuishown` → `useractioncomplete` → `tcloaded`. Echte Seiten: Registrierung 50–180 ms nach Dokumentstart, erster Status `cmpuishown`. |
-| K4 | Kanal ② aus Dritt-Position | – | `switch_to.frame` in ein vorhandenes fremdes iframe, `__tcfapiCall` (`ping`, `addEventListener`) per postMessage an den Locator-Frame | lokal vor und nach dem Klick (TC-String wechselt); wetteronline.de vorher (radar.wo-cloud.com) und nachher (adnami.io) |
+| K4 | Kanal 2 aus Dritt-Position | – | `switch_to.frame` in ein vorhandenes fremdes iframe, `__tcfapiCall` (`ping`, `addEventListener`) per postMessage an den Locator-Frame | lokal vor und nach dem Klick (TC-String wechselt); wetteronline.de vorher (radar.wo-cloud.com) und nachher (adnami.io) |
 | K5 | Cookie `euconsent-v2` und localStorage | ja (CDP `Storage.getCookies`, `execute_script`) | wie getestet; BiDi `storage.getCookies` wird in Phase 3 geprüft | wetteronline.de: `euconsent-v2` auf `.wetteronline.de` nach Akzeptieren; Sourcepoint-Einträge `_sp_user_consent_*` im localStorage auf allen 5 Seiten |
 
 ### Ausweg Site Isolation
@@ -38,7 +38,7 @@ Das Performance-Log mit `--disable-features=IsolateOrigins,site-per-process` erf
 
 ### Grenzen und offene Punkte (in Phase 3 prüfen)
 
-- **Kanal ② ist oft nicht messbar:** Vor jeder Aktion gab es nur auf 1 von 5 Seiten ein fremdes iframe. Werbe-iframes laden meist erst nach der Zustimmung, nach dem Ablehnen also vermutlich selten. Wie vereinbart wird das als „nicht messbar“ markiert. Die Quote gehört in die Ergebnisse.
+- **Kanal 2 ist oft nicht messbar:** Vor jeder Aktion gab es nur auf 1 von 5 Seiten ein fremdes iframe. Werbe-iframes laden meist erst nach der Zustimmung, nach dem Ablehnen also vermutlich selten. Wie vereinbart wird das als „nicht messbar“ markiert. Die Quote gehört in die Ergebnisse.
 - Ob Requests aus iframes in iframes (verschachtelt) und von Service Workern erfasst werden, ist nicht einzeln geprüft (wetteronline.de hatte viele Frames, aber ohne gezielte Kontrolle).
 - Bodies über der Grenze des Data Collectors (im Test 1 MB) fehlen; das wird gespeichert („Body zu groß“).
 - Die BiDi-Callbacks laufen in einem eigenen Thread; der Zugriff braucht eine Sperre (im Test vorhanden).

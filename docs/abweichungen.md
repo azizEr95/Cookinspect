@@ -28,7 +28,7 @@ Abweichungen dieser Neuimplementierung (TCF v2.2/v2.3) vom Paper von Matte et al
 | Halbautomatisch: Ablauf je Code | eine Person, Ablehnen- und Akzeptieren-Sitzung | `r`: Ablehnen-Sitzung, dann Akzeptieren-Sitzung. `n` und `w`: keine Ablehnen-Sitzung; in der ersten Sitzung wird akzeptiert (bei `w` zustimmen, nicht bezahlen). `b` (kein Banner nach 3-mal Neuladen) und `x`: keine weitere Sitzung. `w` nur ohne kostenlosen Weg zum Ablehnen (auch nicht auf der 2. Ebene); Cookiewall mit kostenlosem Ablehnen = `r` mit Ebene, dazu `cookiewall_seen` = ja. Bei `n`/`w` gibt es daher nur **einen** Vorher-Snapshot aus dem halbautomatischen Modus; V1 kommt aus dem automatischen Modus (zwei Sitzungen) | Anhang D; Vorgabe für Cookiewalls (Akzeptieren-Sitzung, damit V1 und die Weitergabe nach Zustimmung messbar sind) |
 | Halbautomatisch: Belege | – | Bildschirmfoto des Banners vor der Aktion und nach dem Schließen (Tabelle `screenshot`, Dateien im Lauf-Ordner); nach jedem Schritt zeigt das Terminal, was gespeichert wurde (bei der Gegenprüfung erst nach dem Label) | Fehler sofort sehen; Nachprüfbarkeit der Labels |
 | Gegenprüfung | eine zweite Prüfung (V-C) | eigene Prüfung mit `role = crosscheck` und Verweis auf die erste; das Werkzeug zeigt nichts von der ersten Prüfung, die eigenen Ergebnisse erst nach dem Label; dieselbe Person kann ihre eigene Prüfung nicht gegenprüfen | blind, wie in CLAUDE.md verlangt |
-| Shared Cookie / consensu.org | Kanal ③ | entfällt; stattdessen Erstanbieter-Cookie `euconsent-v2` und localStorage | in TCF v2 gibt es keinen globalen Consent mehr |
+| Shared Cookie / consensu.org | Kanal 3 | entfällt; stattdessen Erstanbieter-Cookie `euconsent-v2` und localStorage | in TCF v2 gibt es keinen globalen Consent mehr |
 
 ## Versionsstand TCF (geprüft am 2026-10-29)
 
@@ -95,6 +95,6 @@ Folge für den Vergleich mit Matte: Jede Website mit einer Regel wie `Disallow: 
 |---|---|
 | Request-Bodies über 1 MB (Grenze des BiDi-Data-Collectors) werden nicht gespeichert, sondern als „Body zu groß“ markiert. | Ein Consent-String in einem so großen POST-Body würde nicht erkannt. |
 | Requests von Service Workern haben in BiDi keinen Browsing-Context. | Sie werden erfasst, aber keinem Frame zugeordnet (`source = worker`). |
-| Der Listener in Kanal ① fragt alle 50 ms nach `__tcfapi`. | Zwischenstände vor der Anmeldung (z. B. ein frühes `tcloaded`) können fehlen; der Stand zum Zeitpunkt der Anmeldung kommt immer an. |
-| Manche CMPs rufen den Listener mit leerem `tcData` auf (amazon.de, CMP 376, 2026-10-29: kein `eventStatus`, kein `tcString`, keine `listenerId`; ping meldet `displayStatus: hidden`). | Kein TC-String über Kanal ①; das Ereignis wird als `emptyTcData` markiert und nicht als „keine Zustimmung“ gewertet. `removeEventListener` ist dort nicht möglich (keine `listenerId`). |
-| Kanal ② (Dritt-Position) ist nur messbar, wenn die Seite ein fremdes iframe enthält. | Ohne fremdes iframe: „nicht messbar“; die Quote wird pro Phase ausgewiesen. |
+| Der Listener in Kanal 1 fragt alle 50 ms nach `__tcfapi`. | Zwischenstände vor der Anmeldung (z. B. ein frühes `tcloaded`) können fehlen; der Stand zum Zeitpunkt der Anmeldung kommt immer an. |
+| Manche CMPs rufen den Listener mit leerem `tcData` auf (amazon.de, CMP 376, 2026-10-29: kein `eventStatus`, kein `tcString`, keine `listenerId`; ping meldet `displayStatus: hidden`). | Kein TC-String über Kanal 1; das Ereignis wird als `emptyTcData` markiert und nicht als „keine Zustimmung“ gewertet. `removeEventListener` ist dort nicht möglich (keine `listenerId`). |
+| Kanal 2 (Dritt-Position) ist nur messbar, wenn die Seite ein fremdes iframe enthält. | Ohne fremdes iframe: „nicht messbar“; die Quote wird pro Phase ausgewiesen. |

@@ -47,7 +47,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
   2. Snapshot „vorher“.
   3. Ablehnen nach Anhang D (Regeln unten). Codes: `r` kostenlos ablehnbar (mit der Ebene des Ablehnens), `n` keine Ablehnmöglichkeit, `w` Cookiewall ohne kostenloses Ablehnen, `x` Banner kaputt; `b` (kein Banner) ergibt sich, wenn nach 3-mal Neuladen kein Banner erscheint. Vorausgewählte Optionen (V3) sind kein Code, sondern eigene Felder für Zwecke und Vendoren. Bei `n` wird direkt akzeptiert (Anhang D), bei `w` ebenfalls (zustimmen, nicht bezahlen); eine Ablehnen-Sitzung gibt es dann nicht. Bei `b` und `x` folgt keine weitere Sitzung.
   4. Signal nach `eventStatus = useractioncomplete` auslesen. Kommt das Ereignis nicht innerhalb der Zeitgrenze `USERACTIONCOMPLETE_TIMEOUT` (`config.py`), wird „kein useractioncomplete“ gespeichert und trotzdem ausgelesen, klar markiert.
-  5. Nach 3 Sekunden neu laden und erneut auslesen.
+  5. Nach 3 Sekunden neu laden und erneut auslesen. Dieser Snapshot (nach Reload) ist die Grundlage für V4.
   6. Neue Sitzung, dieselben Schritte mit Akzeptieren (nur bei `r`).
 - Pro Phase (vorher, nach Ablehnen, nach Reload, nach Akzeptieren) werden alle Zweck- und Vendor-IDs gespeichert, nicht nur Bool-Flags.
 - Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert; niedrige Priorität; die Quote „nicht messbar“ pro Phase – vorher, nach Ablehnen, nach Akzeptieren – erscheint in der Auswertung); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
@@ -70,6 +70,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - **V2 Keine Ablehnmöglichkeit:** getrennt erfassen: Ablehnen auf der 1. Ebene / nur auf der 2. Ebene / gar nicht.
 - **V3 Vorausgewählt:** Zwecke sind auf der 2. Ebene vorausgewählt. Vendoren getrennt erfassen.
 - **V4 Wahl nicht respektiert:**
+  - Berechnet auf den Snapshots **nach dem Reload** (nach Ablehnen und nach Akzeptieren): stabiler Zustand, auch wenn `useractioncomplete` fehlt (z. B. amazon.de). Der Snapshot direkt nach der Aktion wird getrennt ausgewiesen, dazu, wie oft er vom Reload-Snapshot abweicht.
   - streng: Nach Ablehnen sind alle Zwecke gesetzt, die auch nach Akzeptieren gesetzt sind. Nur auswertbar, wenn die Zweckmenge nach Akzeptieren **nicht leer** ist; sonst „nicht auswertbar“ (die leere Menge ist Teilmenge von allem).
   - Matte-Variante: streng **und** ≥ 1 Vendor-Consent (entspricht Mattes „alle 5 Zwecke“, da v1.1 nur 5 Zwecke hatte).
   - locker: Nach Ablehnen ist ≥ 1 Zweck in `purpose.consents` gesetzt.
