@@ -5,18 +5,21 @@ The tool never clicks.
 Per site (CLAUDE.md, Ablauf):
   1. fresh browser, load the start page, wait 3 s. No banner: reload up to 3 times (Appendix D)
   2. snapshot "before", screenshot of the banner
-  3. the person looks at the banner and enters the code:
+  3. while the banner is visible, the person opens the settings (2nd layer) if there are any and
+     answers: 2nd layer, purposes and vendors preselected (V3), pay option, free way to reject and
+     on which layer (10-s timer for the privacy policy, Appendix D)
+  4. the tool proposes the code, the person confirms it or enters another one:
        r  can be rejected       -> rejects now (rules of Appendix D are shown)
        n  no way to reject      -> accepts in this session (no reject session)
        w  cookiewall without a free way to reject (also not on the 2nd layer)
                                 -> no reject session; accepts in this session (does not pay)
        x  banner broken         -> nothing more
      (b, no banner, follows from step 1)
-  4. wait for eventStatus useractioncomplete (or store "no useractioncomplete"), screenshot after
-     closing, snapshot after the action; after 3 s reload, snapshot again
-  5. the questions of the label (layer, pay option, 2nd layer, V3 purposes and vendors, closing
-     button, note)
-  6. code r only: second fresh session, the same with accepting
+  5. wait for eventStatus useractioncomplete (or store "no useractioncomplete"), screenshot after
+     closing, snapshot after the action; after 3 s reload, snapshot again. The session is stored
+     at once and the tool closes the browser itself
+  6. the questions that need no banner any more: closing button, note
+  7. code r only: second fresh session, the same with accepting
 
 After every step the terminal shows what was stored. In a crosscheck (role crosscheck) nothing
 of the first examination is shown, and the own results only after the label was entered.
@@ -47,12 +50,13 @@ from robots import check_robots
 from run_list import list_info
 from run_metadata import new_metadata, write_metadata
 
-LOOK = """
-  Banner ansehen, noch nichts bestätigen. Die Einstellungen (2. Ebene) dürfen geöffnet werden.
-  Gibt es eine Möglichkeit, abzulehnen?
-  Cookiewall (Bezahl-Option): Code w nur, wenn es KEINEN kostenlosen Weg zum Ablehnen gibt, auch
-  nicht auf der 2. Ebene. Gibt es einen, ist der Code r (Matte lehnt immer ab, wenn es geht,
-  Anhang D); die Bezahl-Option wird danach eigens abgefragt.
+CHECK = """
+  Jetzt das Banner prüfen, noch nichts bestätigen:
+  - Einstellungen (2. Ebene) öffnen, falls vorhanden (z. B. „Einstellungen“, „Anpassen“, „Mehr Optionen“).
+  - Dort nachsehen: Sind Zwecke schon angehakt? Sind Vendoren (Partner, Anbieter) schon angehakt?
+  - Gibt es einen kostenlosen Weg zum Ablehnen, auf der 1. oder der 2. Ebene?
+  - Gibt es nur einen Link zur Datenschutzerklärung: dort höchstens 10 s suchen (t = Timer).
+  Die Fragen kommen jetzt, solange das Banner zu sehen ist. Im Browser noch nichts bestätigen.
 """
 
 # Appendix D (CLAUDE.md, Regeln für das Ablehnen)
@@ -70,13 +74,17 @@ REJECT_RULES = """
 """
 
 ACCEPT_RULES = """
-  Jetzt akzeptieren: auf der 1. Ebene die Schaltfläche für die Zustimmung klicken
-  (z. B. „Alle akzeptieren“). Bei einer Cookiewall: zustimmen, nicht bezahlen.
+  Jetzt akzeptieren: die Schaltfläche für die Zustimmung klicken (z. B. „Alle akzeptieren“), am
+  besten auf der 1. Ebene. Bei einer Cookiewall: zustimmen, nicht bezahlen.
 """
+
+AFTER_CLICK = "  Danach im Browser nichts mehr tun und das Fenster nicht schließen; das Werkzeug lädt neu und schließt es selbst."
 
 CODES = {"r": "rejected", "n": "n", "w": "w", "x": "x"}
 CODE_TEXT = {"r": "kostenlos ablehnbar", "n": "keine Ablehnmöglichkeit",
              "w": "Cookiewall ohne kostenloses Ablehnen", "x": "Banner kaputt"}
+REJECT_WAY = {"1": "ja, auf der 1. Ebene", "2": "ja, erst auf der 2. Ebene", "n": "nein",
+              "t": "10-s-Timer Datenschutzerklärung"}
 PRIVACY_POLICY_SECONDS = 10
 
 
@@ -177,7 +185,7 @@ def describe(label, snapshot, useractioncomplete=None):
 # --- one browser session
 
 class Session:
-    """A fresh browser for one session; stored in the database only at the end (store), when its
+    """A fresh browser for one session; stored in the database after the action (store), when its
     kind (reject or accept) is known."""
 
     def __init__(self, url, run_dir, domain, number):
@@ -267,22 +275,68 @@ class Session:
 
 # --- one site
 
-def ask_label(code, searched):
-    """Step 5: the questions of the label (table label)."""
-    label = {"outcome": CODES[code], "privacy_policy_searched": searched}
-    if code == "r":
-        label["reject_level"] = int(ask_choice("  Auf welcher Ebene abgelehnt?", {"1": "1. Ebene (Banner)",
-                                                                                 "2": "2. Ebene (Einstellungen)"}))
+def ask_reject_way():
+    """Free way to reject: returns (layer 1 or 2, or None) and whether the 10-s timer was used."""
+    searched = False
+    while True:
+        answer = ask_choice("  Gibt es einen kostenlosen Weg zum Ablehnen?", REJECT_WAY)
+        if answer == "t":
+            searched = True
+            countdown(PRIVACY_POLICY_SECONDS)
+            continue
+        return (None if answer == "n" else int(answer)), searched
+
+
+def ask_banner():
+    """Step 3: the questions about the banner, while it is still visible (table label)."""
+    banner = {"settings_layer_available": ask_yes_no("  Gibt es eine 2. Ebene (Einstellungen)?", allow_unknown=True)}
+    if banner["settings_layer_available"]:
+        banner["purposes_preselected"] = ask_yes_no("  2. Ebene: Zwecke vorausgewählt?", allow_unknown=True)
+        banner["vendors_preselected"] = ask_yes_no("  2. Ebene: Vendoren vorausgewählt?", allow_unknown=True)
     # independent of the code: a site with a pay option and a free way to reject is r and a cookiewall
-    label["cookiewall_seen"] = True if code == "w" else ask_yes_no("  Gibt es eine Bezahl-Option (z. B. Pur-Abo)?")
-    label["settings_layer_available"] = ask_yes_no("  Gibt es eine 2. Ebene (Einstellungen)?")
-    if label["settings_layer_available"]:
-        label["purposes_preselected"] = ask_yes_no("  2. Ebene: Zwecke vorausgewählt?", allow_unknown=True)
-        label["vendors_preselected"] = ask_yes_no("  2. Ebene: Vendoren vorausgewählt?", allow_unknown=True)
+    banner["cookiewall_seen"] = ask_yes_no("  Gibt es eine Bezahl-Option (z. B. Pur-Abo)?")
+    banner["reject_level"], banner["privacy_policy_searched"] = ask_reject_way()
+    return banner
+
+
+def suggest_code(banner):
+    """r if there is a free way to reject (also with a pay option, Matte, Appendix D), w for a pay
+    option without one, otherwise n."""
+    if banner["reject_level"]:
+        return "r"
+    return "w" if banner["cookiewall_seen"] else "n"
+
+
+def choose_code(banner):
+    """Step 4: the person confirms the proposed code or enters another one. Returns the label
+    without the closing questions."""
+    proposal = suggest_code(banner)
+    level = f", {banner['reject_level']}. Ebene" if proposal == "r" else ""
+    print(f"\n  Vorschlag: Code {proposal} ({CODE_TEXT[proposal]}{level})")
+    others = ", ".join(f"{key} = {meaning}" for key, meaning in CODE_TEXT.items())
+    while True:
+        code = ask(f"  Enter = übernehmen, oder anderen Code eingeben [{others}]: ").strip().lower() or proposal
+        if code in CODE_TEXT:
+            break
+        print(f"  Bitte Enter oder eines von: {', '.join(CODE_TEXT)}")
+    label = {"outcome": CODES[code], **banner}
+    if code == "r" and not label["reject_level"]:
+        label["reject_level"] = int(ask_choice("  Auf welcher Ebene wird abgelehnt?", {"1": "1. Ebene (Banner)",
+                                                                                     "2": "2. Ebene (Einstellungen)"}))
+    if code != "r":
+        label["reject_level"] = None
+    if code == "w":
+        label["cookiewall_seen"] = True
+    return code, label
+
+
+def ask_closing(code):
+    """Step 6: the questions that need no banner any more."""
+    closing = {}
     if code != "x":
-        label["closed_with"] = ask("  Text der Schaltfläche, mit der das Banner geschlossen wurde: ").strip() or None
-    label["note"] = ask("  Notiz (Enter = keine): ").strip() or None
-    return label
+        closing["closed_with"] = ask("  Text der Schaltfläche, auf die du geklickt hast: ").strip() or None
+    closing["note"] = ask("  Notiz (Enter = keine): ").strip() or None
+    return closing
 
 
 def examine(ctx, site, role, linked_id):
@@ -321,27 +375,30 @@ def examine(ctx, site, role, linked_id):
             output.release()
             database.finish_examination(conn, examination_id, "done")
             return "done"
-        print(LOOK)
-        code = ask_choice("  Code", CODE_TEXT)
-        searched = False
+        print(CHECK)
+        code, label = choose_code(ask_banner())
         if code == "r":
             print(REJECT_RULES)
-            searched = wait_for_person("  Ablehnen und Banner schließen")
+            print(AFTER_CLICK)
+            searched = wait_for_person("  Abgelehnt und Banner geschlossen?")
             first.after_action("reject", output)
             kind = "reject"
         elif code in ("n", "w"):
             print(ACCEPT_RULES)
-            searched = wait_for_person("  Akzeptieren")
+            print(AFTER_CLICK)
+            searched = wait_for_person("  Akzeptiert?")
             first.after_action("accept", output)
             kind = "accept"
         else:
             print("  Banner kaputt: nichts weiter klicken.")
-            kind = "reject"
-        label = ask_label(code, searched)
+            searched, kind = False, "reject"
+        label["privacy_policy_searched"] = label["privacy_policy_searched"] or searched
         stored(first, kind)
     finally:
         first.quit()
-    database.insert_label(conn, examination_id, operator, **label)
+    print("  Sitzung 1 ausgelesen und gespeichert, Browser geschlossen. "
+          + ("Danach folgt Sitzung 2: Akzeptieren." if code == "r" else "Keine Sitzung 2 (Code " + code + ")."))
+    database.insert_label(conn, examination_id, operator, **label, **ask_closing(code))
     output.release()
 
     if code == "r":
@@ -352,7 +409,8 @@ def examine(ctx, site, role, linked_id):
             if second.open() and second.wait_for_banner():
                 second.before(output)
                 print(ACCEPT_RULES)
-                wait_for_person("  Akzeptieren")
+                print(AFTER_CLICK)
+                wait_for_person("  Akzeptiert?")
                 second.after_action("accept", output)
             elif second.fields.get("loaded"):
                 second.before(output)
@@ -360,6 +418,7 @@ def examine(ctx, site, role, linked_id):
             stored(second, "accept")
         finally:
             second.quit()
+        print("  Sitzung 2 ausgelesen und gespeichert, Browser geschlossen.")
     database.finish_examination(conn, examination_id, "done")
     return "done"
 

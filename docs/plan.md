@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-29, Branch `tcf22-port`, Phase 7 fertig (Test an echten Seiten durch die Person steht aus). Nichts gepusht.
+Stand: 2026-10-31, Branch `tcf22-port`, Phase 7 fertig, Ablauf nach dem ersten Test an echten Seiten umgestellt (Test der Person läuft). Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -58,7 +58,7 @@ Noch alt und zu ersetzen: `extract_results.py` (Phase 8; importiert das entfernt
 
 ## Phase 7: halbautomatischer Modus (fertig)
 
-`semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code (`w` nur ohne kostenloses Ablehnen, sonst `r`), Bezahl-Option `cookiewall_seen` (unabhängig vom Code), Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
+`semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code (`w` nur ohne kostenloses Ablehnen, sonst `r`), Bezahl-Option `cookiewall_seen` (unabhängig vom Code), Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Reihenfolge (seit dem ersten Test an t-online.de, 2026-10-31): Die Fragen zum Banner (2. Ebene, V3, Bezahl-Option, kostenloses Ablehnen und Ebene) kommen, solange das Banner zu sehen ist; das Werkzeug schlägt daraus den Code vor, die Person bestätigt oder ändert ihn. Nach dem Klick wird die Sitzung sofort gespeichert und der Browser geschlossen; danach nur noch Schaltflächentext und Notiz. chromedriver ist auf `config.CHROME_VERSION` festgelegt (vorher nahm Selenium Manager .80). Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
 
 ## Phase 8: Verstoß-Logik und Auswertung
 

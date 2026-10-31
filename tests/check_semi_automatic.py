@@ -63,10 +63,11 @@ def main():
                "cmp_list_last_updated": "test", "run_id": database.insert_run(conn, metadata, operator="ae")}
         try:
             print("\n##### Code r: reject session, then accept session")
-            run(ctx, "primary", ["j", "r", click("reject"), "1", "n", "n", "Ablehnen", "",
+            run(ctx, "primary", ["j", "n", "n", "1", "", click("reject"), "Ablehnen", "",
                                  "j", click("accept")])
             print("\n##### Code n: only an accept session")
-            run(ctx, "primary", ["j", "n", click("accept"), "n", "j", "n", "?", "Alle akzeptieren", "keine Ablehnen-Schaltfläche"])
+            run(ctx, "primary", ["j", "j", "n", "?", "n", "n", "", click("accept"), "Alle akzeptieren",
+                                 "keine Ablehnen-Schaltfläche"])
             print("\n##### Code b: no banner after 3 reloads")
             run(ctx, "primary", ["n", "n", "n", "n", ""])
             first = conn.execute("SELECT id FROM examination WHERE role = 'primary' ORDER BY started_at").fetchone()[0]
@@ -74,7 +75,7 @@ def main():
             assert run(ctx, "crosscheck", [], linked_id=first) == "skipped"
             print("\n##### Blind crosscheck of the first examination by xy (results only after the label)")
             ctx["operator"] = "xy"
-            run(ctx, "crosscheck", ["j", "r", click("reject"), "1", "j", "n", "Ablehnen", "",
+            run(ctx, "crosscheck", ["j", "n", "j", "1", "", click("reject"), "Ablehnen", "",
                                     "j", click("accept")], linked_id=first)
         finally:
             server.terminate()

@@ -7,19 +7,30 @@ no --user-data-dir is passed, so no cookies, logins or history are carried over.
 import json
 
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.selenium_manager import SeleniumManager
 
 import config
 
 
+def pinned_paths():
+    """Chrome for Testing and chromedriver, both in config.CHROME_VERSION. Without the driver
+    version Selenium Manager takes the newest chromedriver of the milestone (e.g. .80 for .73)."""
+    paths = SeleniumManager().binary_paths(["--browser", "chrome", "--browser-version", config.CHROME_VERSION,
+                                            "--driver-version", config.CHROME_VERSION])
+    return paths["browser_path"], paths["driver_path"]
+
+
 def start_chrome():
+    browser_path, driver_path = pinned_paths()
     options = webdriver.ChromeOptions()
-    options.browser_version = config.CHROME_VERSION   # without it Selenium Manager may pick another Chrome
+    options.binary_location = browser_path
     options.enable_bidi = True
     if config.HEADLESS:
         options.add_argument("--headless=new")
     options.add_argument(f"--lang={config.ACCEPT_LANGUAGES.split(',')[0]}")
     options.add_experimental_option("prefs", {"intl.accept_languages": config.ACCEPT_LANGUAGES})
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options, service=Service(executable_path=driver_path))
     driver.set_window_size(*config.WINDOW_SIZE)
     driver.set_page_load_timeout(config.PAGE_LOAD_TIMEOUT)
     check_versions(driver)

@@ -25,28 +25,66 @@ def test_crosscheck_needs_the_examination_it_checks(tmp_path):
         semi_automatic.read_sites(path, "xy", "crosscheck")
 
 
-def test_label_after_rejecting_on_the_second_layer(monkeypatch):
-    answers(monkeypatch, ["2", "n", "j", "j", "?", "Auswahl speichern", "Schalter einzeln"])
-    assert semi_automatic.ask_label("r", searched=False) == {
-        "outcome": "rejected", "privacy_policy_searched": False, "reject_level": 2, "cookiewall_seen": False,
-        "settings_layer_available": True, "purposes_preselected": True, "vendors_preselected": None,
-        "closed_with": "Auswahl speichern", "note": "Schalter einzeln"}
+def test_banner_questions_and_code_r_on_the_second_layer(monkeypatch):
+    # asked while the banner is visible: 2nd layer, V3, pay option, way to reject; then Enter = proposal
+    left = answers(monkeypatch, ["j", "j", "?", "n", "2", ""])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert left == []
+    assert code == "r"
+    assert label == {"outcome": "rejected", "settings_layer_available": True, "purposes_preselected": True,
+                     "vendors_preselected": None, "cookiewall_seen": False, "reject_level": 2,
+                     "privacy_policy_searched": False}
 
 
-def test_label_cookiewall_without_free_rejection(monkeypatch):
-    # code w: no free way to reject; the pay option is not asked again, it is set
-    answers(monkeypatch, ["n", "Akzeptieren", ""])
-    assert semi_automatic.ask_label("w", searched=False) == {
-        "outcome": "w", "privacy_policy_searched": False, "cookiewall_seen": True,
-        "settings_layer_available": False, "closed_with": "Akzeptieren", "note": None}
+def test_cookiewall_without_free_rejection_is_proposed_as_w(monkeypatch):
+    answers(monkeypatch, ["n", "j", "n", ""])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert code == "w"
+    assert label == {"outcome": "w", "settings_layer_available": False, "cookiewall_seen": True,
+                     "reject_level": None, "privacy_policy_searched": False}
 
 
-def test_label_cookiewall_with_free_rejection_on_the_second_layer(monkeypatch):
+def test_cookiewall_with_free_rejection_is_r_and_marked(monkeypatch):
     # pay option and a free way to reject on the 2nd layer: code r with layer 2 (Matte, Appendix D),
     # and the site is marked as cookiewall as well
-    answers(monkeypatch, ["2", "j", "j", "n", "n", "Auswahl speichern", ""])
-    label = semi_automatic.ask_label("r", searched=False)
-    assert (label["outcome"], label["reject_level"], label["cookiewall_seen"]) == ("rejected", 2, True)
+    answers(monkeypatch, ["j", "n", "n", "j", "2", ""])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert (code, label["outcome"], label["reject_level"], label["cookiewall_seen"]) == ("r", "rejected", 2, True)
+
+
+def test_no_way_to_reject_is_proposed_as_n(monkeypatch):
+    answers(monkeypatch, ["?", "n", "n", ""])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert (code, label["settings_layer_available"], label["reject_level"]) == ("n", None, None)
+
+
+def test_person_overrides_the_proposal(monkeypatch):
+    # proposal n, the person enters x (banner broken)
+    answers(monkeypatch, ["n", "n", "n", "x"])
+    assert semi_automatic.choose_code(semi_automatic.ask_banner())[0] == "x"
+    # proposal n, the person enters r: the layer is asked
+    answers(monkeypatch, ["n", "n", "n", "r", "1"])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert (code, label["reject_level"]) == ("r", 1)
+    # proposal r, the person enters w: no layer, pay option set
+    answers(monkeypatch, ["n", "n", "1", "w"])
+    code, label = semi_automatic.choose_code(semi_automatic.ask_banner())
+    assert (code, label["reject_level"], label["cookiewall_seen"]) == ("w", None, True)
+
+
+def test_timer_in_the_question_about_rejecting(monkeypatch):
+    shown = []
+    monkeypatch.setattr(semi_automatic, "countdown", lambda seconds: shown.append(seconds))
+    answers(monkeypatch, ["t", "n"])
+    assert semi_automatic.ask_reject_way() == (None, True)
+    assert shown == [10]
+
+
+def test_closing_questions(monkeypatch):
+    answers(monkeypatch, ["Alle ablehnen", ""])
+    assert semi_automatic.ask_closing("r") == {"closed_with": "Alle ablehnen", "note": None}
+    answers(monkeypatch, ["lädt nicht"])
+    assert semi_automatic.ask_closing("x") == {"note": "lädt nicht"}
 
 
 def test_wrong_input_is_asked_again(monkeypatch):
