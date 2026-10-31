@@ -68,6 +68,7 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
 - V2: Ablehnen 1. Ebene / nur 2. Ebene / gar nicht.
 - V3: Nenner = Seiten mit 2. Ebene (`settings_layer_available`); Zwecke und Vendoren getrennt.
 - V4: streng (nur auswertbar, wenn Zwecke nach Akzeptieren nicht leer), Matte-Variante (streng + ≥ 1 Vendor), locker; Zusatzzahlen {1…10}, {1…11}. Nenner ohne `n`, `b`, `x`.
+- V4 bei leerem Snapshot direkt nach der Aktion: Snapshot nach dem Reload nehmen und markieren. Fall amazon.de (Test 2026-10-31): `__tcfapi` liefert vorher und direkt nach Ablehnen/Akzeptieren nur leeres tcData, kein `useractioncomplete`; erst nach dem Reload ein TC-String (nach Ablehnen keine Zwecke, nach Akzeptieren 1, 2, 4, 7, 9, 10 mit 102 Vendoren).
 - Für jede Seite gilt die **jüngste Korrektur**; bei Abweichung in der Gegenprüfung das mildere Ergebnis und alle Seiten der CMP neu prüfen.
 - Berechtigtes Interesse nach Ablehnen getrennt, v. a. Zwecke 3–6 (nicht als V4).
 - Weitergabe an Dritte: TC-Strings mit Zustimmung in Requests an Dritte, (a) vor jeder Aktion, (b) nach Ablehnen.

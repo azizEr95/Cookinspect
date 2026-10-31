@@ -246,7 +246,8 @@ class Session:
         self.fields.update(useractioncomplete_received=event is not None,
                            useractioncomplete_wait_s=round(time.monotonic() - waited, 1))
         if event is None:
-            print(f"  Kein useractioncomplete innerhalb von {config.USERACTIONCOMPLETE_TIMEOUT} s; wird trotzdem ausgelesen.")
+            print(f"  Kein useractioncomplete innerhalb von {config.USERACTIONCOMPLETE_TIMEOUT} s; wird trotzdem ausgelesen"
+                  " und als „kein useractioncomplete“ gespeichert. Maßgeblich ist dann eher der Snapshot nach dem Reload.")
         self.screenshot("after_closing")
         self.snapshots[f"after_{kind}"] = self.capture.snapshot(f"after_{kind}")
         output.show(describe(f"nach {'Ablehnen' if kind == 'reject' else 'Akzeptieren'}",
@@ -291,6 +292,8 @@ def ask_banner():
     """Step 3: the questions about the banner, while it is still visible (table label)."""
     banner = {"settings_layer_available": ask_yes_no("  Gibt es eine 2. Ebene (Einstellungen)?", allow_unknown=True)}
     if banner["settings_layer_available"]:
+        print("  Vorausgewählt = Schalter oder Haken sind schon an, bevor du etwas klickst. Gemischt (z. B. nur\n"
+              "  „berechtigtes Interesse“ an): j und in der Notiz beschreiben.")
         banner["purposes_preselected"] = ask_yes_no("  2. Ebene: Zwecke vorausgewählt?", allow_unknown=True)
         banner["vendors_preselected"] = ask_yes_no("  2. Ebene: Vendoren vorausgewählt?", allow_unknown=True)
     # independent of the code: a site with a pay option and a free way to reject is r and a cookiewall
@@ -334,7 +337,8 @@ def ask_closing(code):
     """Step 6: the questions that need no banner any more."""
     closing = {}
     if code != "x":
-        closing["closed_with"] = ask("  Text der Schaltfläche, auf die du geklickt hast: ").strip() or None
+        closing["closed_with"] = ask("  Text der Schaltfläche, mit der das Banner geschlossen wurde\n"
+                                    "  (nur die letzte; den Weg dorthin gern in die Notiz): ").strip() or None
     closing["note"] = ask("  Notiz (Enter = keine): ").strip() or None
     return closing
 
@@ -357,7 +361,7 @@ def examine(ctx, site, role, linked_id):
     examination_id = database.insert_examination(conn, ctx["run_id"], site["domain"], site["url"], role, operator, **links)
     stored = lambda session, kind: session.store(conn, examination_id, kind, ctx["cmp_list"], ctx["cmp_list_last_updated"])  # noqa: E731
 
-    print("\n  Sitzung 1")
+    print(f"\n  --- {site['domain']}, Sitzung 1")
     first = Session(site["url"], ctx["run_dir"], site["domain"], 1)
     try:
         if not first.open():
@@ -403,7 +407,7 @@ def examine(ctx, site, role, linked_id):
 
     if code == "r":
         time.sleep(config.PAUSE_BETWEEN_DOMAINS)
-        print("\n  Sitzung 2: Akzeptieren")
+        print(f"\n  --- {site['domain']}, Sitzung 2 von 2: Akzeptieren (dieselbe Seite, frischer Browser)")
         second = Session(site["url"], ctx["run_dir"], site["domain"], 2)
         try:
             if second.open() and second.wait_for_banner():
