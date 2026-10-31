@@ -50,7 +50,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
   5. Nach 3 Sekunden neu laden und erneut auslesen. Dieser Snapshot (nach Reload) ist die Grundlage für V4.
   6. Neue Sitzung, dieselben Schritte mit Akzeptieren (nur bei `r`).
 - Pro Phase (vorher, nach Ablehnen, nach Reload, nach Akzeptieren) werden alle Zweck- und Vendor-IDs gespeichert, nicht nur Bool-Flags.
-- Kanäle: ① `__tcfapi` `addEventListener` im Hauptframe; ② aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert; niedrige Priorität; die Quote „nicht messbar“ pro Phase – vorher, nach Ablehnen, nach Akzeptieren – erscheint in der Auswertung); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
+- Kanäle: Kanal 1 `__tcfapi` `addEventListener` im Hauptframe; Kanal 2 aus Dritt-Position über `__tcfapiLocator`/`__tcfapiCall` aus einem vorhandenen fremden iframe (gibt es keins, wird „nicht messbar“ markiert; niedrige Priorität; die Quote „nicht messbar“ pro Phase – vorher, nach Ablehnen, nach Akzeptieren – erscheint in der Auswertung); Erstanbieter-Cookie `euconsent-v2` und localStorage; Requests an Dritte (GET und POST, auch Formulardaten und iframes): `gdpr_consent`, `gdpr` (inkl. `gdpr=0`), `addtl_consent`, Consent-Felder in OpenRTB-/Prebid-Bodies (z. B. `user.ext.consent`).
 - Kein Shared Cookie / consensu.org mehr (gibt es in v2 nicht).
 
 ### Regeln für das Ablehnen (Anhang D)
