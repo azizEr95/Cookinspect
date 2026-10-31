@@ -83,6 +83,8 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 
 **Später, frühestens nach der Messung.** Jetzt wird nichts daran umgesetzt.
 
+**Nachtrag 2026-10-31:** vorgezogen von „später“ auf „nach Phase 8 und Vorab-Lauf“, Details offen. Anlass: Prof. Hildebrand wünscht sich eine kleine Nutzerevaluation; geplant ist Cookie Glasses v2.2 mit einem kurzen Nutzertest (5–10 Personen).
+
 - Idee: die Browser-Erweiterung Cookie Glasses (Matte et al., GPLv3) auf TCF v2.2/v2.3 erweitern, z. B. als Demo fürs Poster.
 - Vorgabe für Phase 4: Der Decoder (`decode/`, `@iabtechlabtcf/core`) wird so gebaut, dass er sich dafür wiederverwenden lässt. Die Dekodierung bleibt eine eigenständige Funktion „TC-String rein, alle IDs als JSON raus“, ohne Abhängigkeit von Selenium, Python oder der Datenbank, damit sie auch in einer Erweiterung laufen kann.
 - Lizenz: Cookie Glasses steht unter GPLv3; eine Erweiterung davon muss ebenfalls GPLv3 sein. Für unseren Decoder heißt das: keinen Code aus Cookie Glasses übernehmen, damit er unabhängig lizenzierbar bleibt.

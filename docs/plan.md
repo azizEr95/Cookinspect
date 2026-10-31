@@ -101,7 +101,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs), `docs/abweichungen
 - Crawl-Nutzer auf beiden Macs einrichten, `CRAWL_USER` setzen und committen (`docs/crawl-nutzer.md`). Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
 - Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
 - Lizenz von Cookinspect mit Matte klären (keine Lizenzdatei) vor einer Veröffentlichung.
-- Später (E4): Cookie Glasses (GPLv3) auf TCF v2.2/v2.3 erweitern, frühestens nach der Messung; Decoder ist dafür eigenständig gebaut.
+- E4: Cookie Glasses (GPLv3) auf TCF v2.2/v2.3 erweitern, mit kurzem Nutzertest (5–10 Personen); vorgezogen auf „nach Phase 8 und Vorab-Lauf“, Details offen. Decoder ist dafür eigenständig gebaut.
 
 ## Wichtige Befunde bisher
 
