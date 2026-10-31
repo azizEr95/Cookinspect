@@ -144,11 +144,15 @@ Jede Person arbeitet an ihrem eigenen Mac, mit eigenem Crawl-Nutzer (Abschnitte 
    venv/bin/python run_list.py semi-automatic data/prefilter-messung-<Zeit>/site_assignment.csv --operator ae --purpose messung
    ```
    (Person `xy` entsprechend mit `--operator xy`.) Das Terminal führt durch Anhang D und fragt die Codes ab. Abbrechen mit Ctrl+C ist jederzeit möglich; beim nächsten Start werden fertige Seiten übersprungen. Jede Person hat danach ihr eigenes `data/messung.sqlite`; die Bildschirmfotos liegen in `data/semi-automatic-messung-<Kürzel>-<Zeit>/screenshots/`.
-5. **Zusammenführen:** Jede Person gibt ihre Datei weiter, z. B. als `messung-ae.sqlite` und `messung-xy.sqlite`. Dann auf einem Mac:
+5. **Zusammenführen, jede Person in die eigene Datei:** Jede Person gibt ihre Datei weiter, z. B. als `messung-ae.sqlite` und `messung-xy.sqlite`, und führt die fremde in ihre eigene `data/messung.sqlite` zusammen. Auf dem Mac von `ae`:
    ```sh
-   venv/bin/python merge_databases.py data/messung-merged.sqlite messung-ae.sqlite messung-xy.sqlite
+   venv/bin/python merge_databases.py data/messung.sqlite messung-xy.sqlite
    ```
-   Das Skript fügt nur hinzu. Zweimal zusammenführen ändert nichts; abweichende Zeilen mit gleichem Schlüssel meldet es. Enthalten beide Dateien einen Vorfilter-Messlauf, warnt es: dann wurde er versehentlich auf beiden Macs gestartet.
+   (auf dem Mac von `xy` entsprechend mit `messung-ae.sqlite`). Danach haben beide denselben Stand, und `evaluate.py`, `crosscheck.py` und die Gegenprüfung arbeiten mit `--purpose messung` auf der eigenen Datei. Das Skript fügt nur hinzu. Zweimal zusammenführen ändert nichts; abweichende Zeilen mit gleichem Schlüssel meldet es. Enthalten beide Dateien einen Vorfilter-Messlauf, warnt es: dann wurde er versehentlich auf beiden Macs gestartet. Nach jeder weiteren Runde (Gegenprüfung, Neuprüfung) wird wieder gegenseitig zusammengeführt.
+
+   **Regel für die blinde Gegenprüfung:** Nach dem Zusammenführen stehen auch die Ergebnisse der anderen Person in der eigenen Datei. Bis die eigene Gegenprüfung fertig ist: kein `evaluate`, kein `crosscheck evaluate`, kein Blick in die Datenbank (auch nicht mit `sqlite3`) und nicht in `selection.json`.
+
+Der automatische Modus läuft für **alle** Seiten auf **einem** Mac (z. B. bei `ae`), damit V1 überall unter denselben Bedingungen gemessen wird. Den ganzen Ablauf mit allen Befehlen beschreibt die README.
 
 ## 9. Ergebnisse weitergeben
 

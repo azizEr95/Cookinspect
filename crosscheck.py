@@ -29,6 +29,8 @@ import site_data
 import violations as v
 
 SEED = 2020
+# V4 counts as violated in its strict variant: a site with "lax only" stays in the pool of sites
+# without the violation, as Matte counted only the case "5 purposes" (Tab. III, in bold)
 KINDS = {"V4": lambda site: v.v4(site["semi"], "strict"), "V2": lambda site: v.v2(site["semi_label"]["label"])}
 
 
