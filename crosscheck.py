@@ -8,7 +8,8 @@ cmp_id: nothing about the first result) and selection.json with the key (which s
 for which violation), which the checking person must not open.
 
 evaluate: compares each crosscheck with the first examination (V2 and V4). On a difference the
-milder result counts (site_data.py does that in every evaluation) and all sites of that CMP are
+milder classification counts, separately for V2 and V4 (site_data.py does that in every
+evaluation) and all sites of that CMP are
 rechecked: recheck.csv for semi_automatic.py --role recheck.
 
     venv/bin/python crosscheck.py select --operators ae,xy --purpose messung
@@ -28,7 +29,7 @@ import site_data
 import violations as v
 
 SEED = 2020
-KINDS = {"V4": lambda semi: v.v4(semi, "strict"), "V2": lambda semi: v.v2(semi["label"])}
+KINDS = {"V4": lambda site: v.v4(site["semi"], "strict"), "V2": lambda site: v.v2(site["semi_label"]["label"])}
 
 
 def candidates(sites, kind):
@@ -37,7 +38,7 @@ def candidates(sites, kind):
     for site in sites.values():
         if site["semi"] is None or site["source"] != "primary" or site["crosscheck"]:
             continue
-        value = KINDS[kind](site["semi"])["value"]
+        value = KINDS[kind](site)["value"]
         if value == v.YES:
             groups[site["cmp_id"]][0].append(site)
         elif value == v.NO:
@@ -101,20 +102,28 @@ def command_select(args, sites, out_dir):
 
 
 def compare(site):
-    """V2 and V4 of the first examination and of the crosscheck."""
+    """V2 and V4 of the first examination and of the crosscheck, and which one counts."""
     info = site["crosscheck"]
     first, second = info["primary"], info["crosscheck"]
+    v2_first, v2_second = info["ranks"]["V2"]
+    v4_first, v4_second = info["ranks"]["V4"]
+
+    def name(order, rank):
+        return "nicht auswertbar" if rank is None else order[rank]
+
     return {"domain": site["domain"], "cmp_id": site["cmp_id"],
             "first_operator": info["primary_operator"], "crosscheck_operator": info["crosscheck_operator"],
-            "v2_first": v.v2(first["label"])["value"], "v2_crosscheck": v.v2(second["label"])["value"],
-            "v4_first": v.v4(first, "strict")["value"], "v4_crosscheck": v.v4(second, "strict")["value"],
-            "differs": info["differs"], "counts": site["source"]}
+            "v2_first": name(v.V2_ORDER, v2_first), "v2_crosscheck": name(v.V2_ORDER, v2_second),
+            "v4_first": name(v.V4_ORDER, v4_first), "v4_crosscheck": name(v.V4_ORDER, v4_second),
+            "v2_counts": "Gegenprüfung" if site["semi_label"] is second else "erste Prüfung",
+            "v4_counts": "Gegenprüfung" if site["semi"] is second else "erste Prüfung",
+            "differs": info["differs"], "first_id": first["id"], "crosscheck_id": second["id"]}
 
 
 def command_evaluate(sites, out_dir):
     compared = [compare(site) for site in sites.values() if site["crosscheck"]]
-    columns = ["domain", "cmp_id", "first_operator", "crosscheck_operator", "v2_first", "v2_crosscheck",
-               "v4_first", "v4_crosscheck", "differs", "counts"]
+    columns = ["domain", "cmp_id", "first_operator", "crosscheck_operator", "v2_first", "v2_crosscheck", "v2_counts",
+               "v4_first", "v4_crosscheck", "v4_counts", "differs", "first_id", "crosscheck_id"]
     write_csv(out_dir / "comparison.csv", compared, columns)
     cmps = {row["cmp_id"] for row in compared if row["differs"]}
     recheck = [{"domain": site["domain"], "url": site["semi"]["url"], "cmp_id": site["cmp_id"],
@@ -124,7 +133,8 @@ def command_evaluate(sites, out_dir):
     print(f"{len(compared)} Gegenprüfungen, {sum(1 for r in compared if r['differs'])} mit Abweichung")
     for row in compared:
         print(f"  {row['domain']} (CMP {row['cmp_id']}): V2 {row['v2_first']} / {row['v2_crosscheck']}, "
-              f"V4 {row['v4_first']} / {row['v4_crosscheck']}" + (f" → abweichend, zählt: {row['counts']}" if row["differs"] else ""))
+              f"V4 {row['v4_first']} / {row['v4_crosscheck']}"
+              + (f" → abweichend, zählt: V2 {row['v2_counts']}, V4 {row['v4_counts']}" if row["differs"] else ""))
     print(f"{out_dir / 'recheck.csv'}: {len(recheck)} Seiten neu prüfen (CMPs {sorted(cmps, key=str)})")
 
 
@@ -142,7 +152,7 @@ def main():
         parser.error("select needs --operators, e.g. ae,xy")
     purpose = args.purpose or "test"
     conn = database.connect(config.database_path(purpose))
-    sites = site_data.load_sites(conn, v.severity, purpose)
+    sites = site_data.load_sites(conn, v.RANKS, purpose)
     out_dir = config.DATA_DIR / f"crosscheck-{args.command}-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
     out_dir.mkdir(parents=True)
     if args.command == "select":

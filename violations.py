@@ -122,6 +122,19 @@ def v3(label, what="purposes", matte_denominator=False):
     return result(NO)
 
 
+def v3_cookiewall(label):
+    """Extra line, not part of V3: pre-selection on the 2nd layer of cookiewalls (code w).
+    value "ja" if purposes or vendors are pre-selected; purposes and vendors separately."""
+    if label is None or label["outcome"] != "w":
+        return result(NA, "keine Cookiewall (w)")
+    if label["settings_layer_available"] != 1:
+        return result(NA, "keine 2. Ebene")
+    as_text = {1: YES, 0: NO, None: NA}
+    purposes, vendors = as_text[label["purposes_preselected"]], as_text[label["vendors_preselected"]]
+    return result(YES if YES in (purposes, vendors) else NO if (purposes, vendors) == (NO, NO) else NA,
+                  purposes=purposes, vendors=vendors)
+
+
 # --- V4 choice not respected
 
 def v4_phases(semi, moment="reload"):
@@ -172,13 +185,35 @@ def v4_action_differs(semi, channels=MAIN_CHANNELS):
     return differs
 
 
-def severity(semi):
-    """The results relevant for the crosscheck (Matte V-C: V4 and V2), True = violation; the
-    examination with fewer violations is the milder one."""
-    return (v2(semi["label"])["value"] == YES,
-            v4(semi, "strict")["value"] == YES,
-            v4(semi, "matte")["value"] == YES,
-            v4(semi, "lax")["value"] == YES)
+# Milder classification per violation for the crosscheck (site_data.effective_examination),
+# from mild to severe. The Matte variant is strict plus >= 1 vendor consent, so it is the most
+# severe level of V4.
+V2_ORDER = ("1. Ebene", "nur 2. Ebene", "gar nicht")
+V4_ORDER = ("kein Verstoß", "nur locker", "streng ohne Vendor-Consent", "Matte-Variante")
+
+
+def v2_rank(semi):
+    """Index in V2_ORDER; w counts as "gar nicht" (no free way to reject); None for b and x."""
+    level = v2(semi["label"], "count_as_v2").get("level")
+    if level is None:
+        return None
+    return V2_ORDER.index("gar nicht" if level.startswith("gar nicht") else level)
+
+
+def v4_rank(semi):
+    """Index in V4_ORDER; None if V4 cannot be evaluated (no reject session, no string)."""
+    if v4(semi, "lax")["value"] == NA:
+        return None
+    if v4(semi, "matte")["value"] == YES:
+        return V4_ORDER.index("Matte-Variante")
+    if v4(semi, "strict")["value"] == YES:
+        return V4_ORDER.index("streng ohne Vendor-Consent")
+    if v4(semi, "lax")["value"] == YES:
+        return V4_ORDER.index("nur locker")
+    return V4_ORDER.index("kein Verstoß")
+
+
+RANKS = {"V2": v2_rank, "V4": v4_rank}
 
 
 # --- legitimate interest after rejecting

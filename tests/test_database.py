@@ -305,9 +305,9 @@ def test_evaluation_reads_the_database_and_takes_the_milder_crosscheck(conn):
     first = semi_examination(conn, run_id, "rejected", FIXTURES["all_purposes"], FIXTURES["all_purposes"])
     semi_examination(conn, run_id, "rejected", FIXTURES["no_consent"], FIXTURES["all_purposes"], operator="xy",
                      role="crosscheck", crosscheck_of=first)
-    site = site_data.load_sites(conn, violations.severity)["example.de"]
-    assert site["crosscheck"]["differs"] is True
-    assert (site["source"], site["semi"]["operator"]) == ("crosscheck (milder)", "xy")
+    site = site_data.load_sites(conn, violations.RANKS)["example.de"]
+    assert site["crosscheck"]["differs_by_kind"] == {"V2": False, "V4": True}
+    assert (site["semi"]["operator"], site["semi_label"]["operator"]) == ("xy", "ae")
     assert violations.v4(site["semi"], "strict")["value"] == violations.NO
     assert violations.v4(site["crosscheck"]["primary"], "strict")["value"] == violations.YES
     assert violations.v4(site["crosscheck"]["primary"], "lax")["purposes_after_reject"] == list(range(1, 12))

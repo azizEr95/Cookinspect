@@ -4,17 +4,22 @@ Nothing is computed or stored here except which examination counts for a site.
 Per site:
   - automatic: the latest finished examination of the automatic mode, with its two sessions and
     the snapshot "before" of each
-  - semi: the examination of the semi-automatic mode that counts (rules below), with label and
-    all snapshots of the reject and the accept session
+  - semi: the semi-automatic examination that counts for V4 (rules below), with all snapshots of
+    the reject and the accept session; everything measured in the sessions (V4, LI, transfer
+    after rejecting, E5) comes from it
+  - semi_label: the examination that counts for V2; the values of the label (V2, V3,
+    cookiewall) come from it. Without a differing crosscheck both are the same examination.
   - warnings: e.g. two finished examinations of the same person in the same role
 
 Which semi-automatic examination counts (Matte V-C, CLAUDE.md, Gegenprüfung):
   1. a correction replaces the examination it refers to (the latest correction if there are
      several)
   2. a recheck replaces all earlier examinations of the site (the latest recheck)
-  3. otherwise the primary examination and its blind crosscheck: if they differ, the MILDER one
-     counts (fewer violations, see violations.severity), not the later one; on a tie the
-     primary one. Either way the site is marked as differing (the CMP is rechecked).
+  3. otherwise the primary examination and its blind crosscheck, decided separately for V2 and
+     for V4 (the crosscheck is done separately for both, Matte V-C): the MILDER classification
+     counts (violations.RANKS), not the later one; on a tie the primary one. If only one of the
+     two can be evaluated for that violation (e.g. code n has no reject session), that one
+     counts. A difference marks the site (all sites of the CMP are rechecked).
      Several primary examinations: the latest, with a warning.
 
 A snapshot ("phase") is {"observations": [...], "requests": [...]}; an observation has the
@@ -119,19 +124,35 @@ def apply_corrections(examinations):
     return [latest_version(e) for e in examinations if e["role"] != "correction"]
 
 
-def effective_examination(examinations, severity):
+def milder(first, second, rank):
+    """The examination with the milder classification (lower rank); rank None = not evaluable,
+    then the other one counts; on a tie the first one."""
+    first_rank, second_rank = rank(first), rank(second)
+    if first_rank is None and second_rank is not None:
+        return second
+    if second_rank is not None and second_rank < first_rank:
+        return second
+    return first
+
+
+def effective_examination(examinations, ranks):
     """Rules 1-3 for the semi-automatic examinations of one site (finished, with label).
-    severity(examination) gives the results relevant for the crosscheck (V2, V4) as a tuple of
-    booleans, True = violation.
-    Returns (examination or None, info) with info = {"source", "crosscheck", "warnings"}."""
+    ranks: {"V2": function, "V4": function}, each examination -> rank (0 = no violation, higher
+    = more severe) or None (not evaluable), see violations.RANKS.
+    Returns ({"V2": examination, "V4": examination} or None, info) with info = {"source",
+    "crosscheck", "warnings"}."""
     info = {"source": None, "crosscheck": None, "warnings": []}
     examinations = apply_corrections([e for e in examinations if e["label"]])
+
+    def same(examination, source):
+        info["source"] = source
+        return {kind: examination for kind in ranks}, info
+
     rechecks = [e for e in examinations if e["role"] == "recheck"]
     if rechecks:
         if len(rechecks) > 1:
             info["warnings"].append(f"{len(rechecks)} Neuprüfungen, die jüngste zählt")
-        info["source"] = "recheck"
-        return rechecks[-1], info
+        return same(rechecks[-1], "recheck")
     primaries = [e for e in examinations if e["role"] == "primary"]
     if not primaries:
         if examinations:
@@ -145,21 +166,20 @@ def effective_examination(examinations, severity):
     others = [e for e in examinations if e["role"] == "crosscheck" and e["crosscheck_of"] != primary["id"]]
     if others:
         info["warnings"].append(f"{len(others)} Gegenprüfung(en) einer älteren ersten Prüfung, nicht berücksichtigt")
-    info["source"] = "primary"
     if not crosschecks:
-        return primary, info
+        return same(primary, "primary")
     crosscheck = crosschecks[-1]
     if len(crosschecks) > 1:
         info["warnings"].append(f"{len(crosschecks)} Gegenprüfungen, die jüngste zählt")
-    first, second = severity(primary), severity(crosscheck)
-    info["crosscheck"] = {"primary_id": primary["id"], "crosscheck_id": crosscheck["id"],
-                          "primary_operator": primary["operator"], "crosscheck_operator": crosscheck["operator"],
-                          "primary_violations": first, "crosscheck_violations": second, "differs": first != second,
+    chosen = {kind: milder(primary, crosscheck, rank) for kind, rank in ranks.items()}
+    differs = {kind: rank(primary) != rank(crosscheck) for kind, rank in ranks.items()}
+    info["crosscheck"] = {"primary_operator": primary["operator"], "crosscheck_operator": crosscheck["operator"],
+                          "ranks": {kind: (rank(primary), rank(crosscheck)) for kind, rank in ranks.items()},
+                          "differs_by_kind": differs, "differs": any(differs.values()),
                           "primary": primary, "crosscheck": crosscheck}
-    if sum(second) < sum(first):
-        info["source"] = "crosscheck (milder)"
-        return crosscheck, info
-    return primary, info
+    info["source"] = ", ".join(f"{kind}: {'Gegenprüfung (milder)' if e is crosscheck else 'erste Prüfung'}"
+                               for kind, e in chosen.items())
+    return chosen, info
 
 
 # --- sites
@@ -175,7 +195,7 @@ def cmp_id_of(site):
     """From the prefilter, otherwise from the first TC string seen on the site."""
     if site["cmp_id"] is not None:
         return site["cmp_id"]
-    for examination in filter(None, [site["semi"], site["automatic"]]):
+    for examination in filter(None, [site["semi"], site["semi_label"], site["automatic"]]):
         for session in examination["sessions"]:
             for phase in session["phases"].values():
                 for observation in phase["observations"]:
@@ -184,26 +204,28 @@ def cmp_id_of(site):
     return None
 
 
-def load_sites(conn, severity, purpose=None):
-    """{domain: site}, for all domains with an automatic or semi-automatic examination."""
+def load_sites(conn, ranks, purpose=None):
+    """{domain: site}, for all domains with an automatic or semi-automatic examination.
+    ranks: violations.RANKS (milder classification per violation for the crosscheck)."""
     tc_strings = load_tc_strings(conn)
     examinations = load_examinations(conn, load_phases(conn, tc_strings))
     if purpose:
         examinations = [e for e in examinations if e["purpose"] == purpose]
-    ranks = {row["domain"]: row["tranco_rank"] for row in conn.execute("SELECT domain, tranco_rank FROM website")}
+    tranco_ranks = {row["domain"]: row["tranco_rank"] for row in conn.execute("SELECT domain, tranco_rank FROM website")}
     cmp_ids = cmp_ids_from_prefilter(conn, purpose)
     by_domain = defaultdict(list)
     for e in examinations:
         by_domain[e["domain"]].append(e)
     sites = {}
-    for domain, own in sorted(by_domain.items(), key=lambda item: (ranks.get(item[0]) or 10**9, item[0])):
+    for domain, own in sorted(by_domain.items(), key=lambda item: (tranco_ranks.get(item[0]) or 10**9, item[0])):
         automatic = [e for e in own if e["role"] == "automatic"]
         semi = [e for e in own if e["role"] != "automatic"]
-        effective, info = effective_examination(semi, severity)
+        chosen, info = effective_examination(semi, ranks)
         if len(automatic) > 1:
             info["warnings"].append(f"{len(automatic)} fertige automatische Prüfungen, die jüngste zählt")
-        site = {"domain": domain, "rank": ranks.get(domain), "cmp_id": cmp_ids.get(domain),
-                "automatic": automatic[-1] if automatic else None, "semi": effective,
+        site = {"domain": domain, "rank": tranco_ranks.get(domain), "cmp_id": cmp_ids.get(domain),
+                "automatic": automatic[-1] if automatic else None,
+                "semi": chosen["V4"] if chosen else None, "semi_label": chosen["V2"] if chosen else None,
                 "semi_examinations": semi, "source": info["source"], "crosscheck": info["crosscheck"],
                 "warnings": info["warnings"]}
         site["cmp_id"] = cmp_id_of(site)

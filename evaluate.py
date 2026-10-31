@@ -44,7 +44,7 @@ def gvl_for(vendor_list_version, policy_version):
 def evaluate_site(site):
     """All results of one site, as {name: result of violations.py}."""
     automatic, semi = site["automatic"], site["semi"]
-    label = semi["label"] if semi else None
+    label = site["semi_label"]["label"] if site["semi_label"] else None
     results = {
         "v1": v.v1(automatic),
         "v1_matte_variant": v.v1(automatic, matte_variant=True),
@@ -52,6 +52,7 @@ def evaluate_site(site):
         "v3_purposes": v.v3(label, "purposes"),
         "v3_vendors": v.v3(label, "vendors"),
         "v3_either_matte": v.v3(label, "either", matte_denominator=True),
+        "v3_cookiewall": v.v3_cookiewall(label),
         "li_after_reject": v.li_after_reject(semi, gvl_for),
         "transfer_before": v.transfer_before(automatic),
         "transfer_after_reject": v.transfer_after_reject(semi),
@@ -79,7 +80,7 @@ def phase_of(site, phase):
 
 
 def cookiewall_flags(site):
-    label = site["semi"]["label"] if site["semi"] else None
+    label = site["semi_label"]["label"] if site["semi_label"] else None
     return {"heuristic": bool(site["automatic"]["cookiewall_suspected"]) if site["automatic"] else None,
             "heuristic_reason": site["automatic"]["cookiewall_reason"] if site["automatic"] else None,
             "cookiewall_seen": None if label is None or label["cookiewall_seen"] is None else bool(label["cookiewall_seen"]),
@@ -87,12 +88,12 @@ def cookiewall_flags(site):
 
 
 def csv_row(site, results):
-    label = site["semi"]["label"] if site["semi"] else None
+    label = site["semi_label"]["label"] if site["semi_label"] else None
     flags = cookiewall_flags(site)
     row = {"rank": site["rank"], "domain": site["domain"], "cmp_id": site["cmp_id"],
            "code": {"rejected": "r"}.get(label["outcome"], label["outcome"]) if label else None,
            "reject_level": label["reject_level"] if label else None,
-           "operator": site["semi"]["operator"] if site["semi"] else None, "source": site["source"],
+           "operator": site["semi_label"]["operator"] if site["semi_label"] else None, "source": site["source"],
            "crosscheck_differs": site["crosscheck"]["differs"] if site["crosscheck"] else None,
            "cookiewall_heuristic": flags["heuristic"], "cookiewall_seen": flags["cookiewall_seen"], "w": flags["w"]}
     for name, r in results.items():
@@ -244,6 +245,10 @@ def details(results, semi_sites, sites):
     block("V3 Vorausgewählt (Nenner: Code r und 2. Ebene vorhanden; „?“ = nicht geprüft, außerhalb des Nenners)", [
         line("Zwecke vorausgewählt", "v3_purposes"), line("Vendoren vorausgewählt", "v3_vendors"),
         line("Zwecke oder Vendoren (Nenner wie Matte: alle r)", "v3_either_matte")])
+    cookiewall = [r["v3_cookiewall"] for r in results.values() if r["v3_cookiewall"]["value"] != v.NA]
+    parts.append("Zusatzzeile: Vorauswahl auf der 2. Ebene bei Cookiewalls (w), nicht im Nenner von V3: "
+                 f"Zwecke {percent(sum(1 for r in cookiewall if r['purposes'] == v.YES), sum(1 for r in cookiewall if r['purposes'] != v.NA))}, "
+                 f"Vendoren {percent(sum(1 for r in cookiewall if r['vendors'] == v.YES), sum(1 for r in cookiewall if r['vendors'] != v.NA))}.")
     not_checked = {what: sum(1 for r in results.values() if r[f"v3_{what}"]["reason"] == "nicht geprüft")
                    for what in ("purposes", "vendors")}
     parts.append(f"Nicht geprüft („?“): Zwecke {not_checked['purposes']}, Vendoren {not_checked['vendors']}.")
@@ -360,9 +365,9 @@ def main():
     purpose = args.purpose or "test"
 
     conn = database.connect(config.database_path(purpose))
-    sites = site_data.load_sites(conn, v.severity, purpose)
+    sites = site_data.load_sites(conn, v.RANKS, purpose)
     results = {domain: evaluate_site(site) for domain, site in sites.items()}
-    semi_sites = {d: r for d, r in results.items() if sites[d]["semi"]}
+    semi_sites = {d: r for d, r in results.items() if sites[d]["semi_label"]}
     out_dir = config.DATA_DIR / f"evaluation-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
     out_dir.mkdir(parents=True)
 

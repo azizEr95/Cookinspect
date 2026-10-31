@@ -62,7 +62,7 @@ Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–
 
 ## Phase 8: Verstoß-Logik und Auswertung (fertig)
 
-Umgesetzt: `site_data.py` (Datenbank → Dicts pro Seite; Rangfolge: Korrektur ersetzt die korrigierte Prüfung, Neuprüfung ersetzt alle früheren, sonst das mildere Ergebnis von erster Prüfung und Gegenprüfung; mehrere erste Prüfungen: die jüngste, mit Warnung), `violations.py` (austauschbare Funktionen, Ergebnis „ja“/„nein“/„nicht auswertbar“ mit Grund), `evaluate.py` (`run_list.py evaluate`: `sites.csv`, `tables.md`, `tables.json` mit Tab. II, Tab. III samt Zuordnung zu Matte, Details), `crosscheck.py` (`select`: Auswahl nach V-C getrennt für V4 und V2, CSV pro Person ohne Hinweis auf das erste Ergebnis, Schlüssel in `selection.json`; `evaluate`: Vergleich und `recheck.csv`). Hauptzahl Kanal 1, Variante „Matte-Kanäle“; V4 auf den Snapshots nach dem Reload, direkt nach der Aktion getrennt. Mit `data/test.sqlite` geprüft (Vorfilter 10 Domains, automatisch und halbautomatisch t-online, amazon, bild). Unit-Tests: `tests/test_violations.py`, `tests/test_database.py`.
+Umgesetzt: `site_data.py` (Datenbank → Dicts pro Seite; Rangfolge: Korrektur ersetzt die korrigierte Prüfung, Neuprüfung ersetzt alle früheren, sonst das mildere Ergebnis von erster Prüfung und Gegenprüfung, getrennt für V2 und V4; mehrere erste Prüfungen: die jüngste, mit Warnung), `violations.py` (austauschbare Funktionen, Ergebnis „ja“/„nein“/„nicht auswertbar“ mit Grund), `evaluate.py` (`run_list.py evaluate`: `sites.csv`, `tables.md`, `tables.json` mit Tab. II, Tab. III samt Zuordnung zu Matte, Details), `crosscheck.py` (`select`: Auswahl nach V-C getrennt für V4 und V2, CSV pro Person ohne Hinweis auf das erste Ergebnis, Schlüssel in `selection.json`; `evaluate`: Vergleich und `recheck.csv`). Hauptzahl Kanal 1, Variante „Matte-Kanäle“; V4 auf den Snapshots nach dem Reload, direkt nach der Aktion getrennt. Mit `data/test.sqlite` geprüft (Vorfilter 10 Domains, automatisch und halbautomatisch t-online, amazon, bild). Unit-Tests: `tests/test_violations.py`, `tests/test_database.py`.
 
 Vorgaben (Stand vor der Umsetzung):
 
@@ -91,7 +91,7 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
 
 ## Phase 9: Unit-Tests
 
-Vorhanden: 124 Tests (darunter Verstoß-Funktionen, Rangfolge der Prüfungen, Auswahl der Gegenprüfung, Varianten für `w`).
+Vorhanden: 128 Tests (darunter Verstoß-Funktionen, Rangfolge der Prüfungen, Auswahl der Gegenprüfung, Varianten für `w`).
 
 ## Phase 10: Testlauf
 

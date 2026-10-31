@@ -183,66 +183,113 @@ def test_e5_consent_outside_disclosed_vendors():
     assert v.undisclosed_consent(phase(tc({1}, {10})))["value"] == v.NA   # v2.2 string without the segment
 
 
-# --- which examination counts (site_data.effective_examination)
+# --- which examination counts (site_data.effective_examination with violations.RANKS)
 
-def examination(id, role, started_at, operator="ae", crosscheck_of=None, correction_of=None, outcome="rejected"):
-    return {"id": id, "role": role, "operator": operator, "started_at": started_at, "crosscheck_of": crosscheck_of,
-            "correction_of": correction_of, "label": {"outcome": outcome}}
+IGNORED = {"after_reject": phase(tc({1, 2}, {10})), "after_accept": phase(tc({1, 2}, {10}))}         # V4 Matte-Variante
+STRICT_NO_VENDOR = {"after_reject": phase(tc({1, 2})), "after_accept": phase(tc({1, 2}, {10}))}  # V4 streng ohne Vendor
+LAX_ONLY = {"after_reject": phase(tc({1}, {10})), "after_accept": phase(tc({1, 2}, {10}))}       # V4 nur locker
+RESPECTED = {"after_reject": phase(tc()), "after_accept": phase(tc({1, 2}, {10}))}               # V4 kein Verstoß
 
 
-def by_outcome(e):
-    """Stand-in for violations.severity: code n = one violation (V2)."""
-    return (e["label"]["outcome"] == "n",)
+def examination(id, role, started_at, fields=None, operator="ae", crosscheck_of=None, correction_of=None):
+    return {**semi(**(fields if fields is not None else RESPECTED)), "id": id, "role": role, "operator": operator,
+            "started_at": started_at, "crosscheck_of": crosscheck_of, "correction_of": correction_of}
+
+
+def counts(exams):
+    chosen, info = site_data.effective_examination(exams, v.RANKS)
+    return chosen["V2"]["id"], chosen["V4"]["id"], info
+
+
+def test_rank_order_of_v2_and_v4():
+    assert [v.v4_rank(semi(**f)) for f in (RESPECTED, LAX_ONLY, STRICT_NO_VENDOR, IGNORED)] == [0, 1, 2, 3]
+    assert v.V4_ORDER == ("kein Verstoß", "nur locker", "streng ohne Vendor-Consent", "Matte-Variante")
+    assert [v.v2_rank(semi(**f)) for f in ({"reject_level": 1, **RESPECTED}, {"reject_level": 2, **RESPECTED},
+                                            {"outcome": "n"}, {"outcome": "w"}, {"outcome": "x"})] == [0, 1, 2, 2, None]
+    assert v.v4_rank(semi(outcome="n", after_accept=phase(tc({1})))) is None
 
 
 def test_correction_replaces_the_examination_it_refers_to():
-    first = examination("p", "primary", "1", outcome="n")
-    corrected = examination("c", "correction", "2", correction_of="p", outcome="rejected")
-    effective, info = site_data.effective_examination([first, corrected], by_outcome)
-    assert (effective["id"], effective["role"], effective["corrects"]) == ("c", "primary", "p")
+    first = examination("p", "primary", "1", {"outcome": "n"})
+    corrected = examination("c", "correction", "2", correction_of="p")
+    chosen, info = site_data.effective_examination([first, corrected], v.RANKS)
+    assert (chosen["V2"]["id"], chosen["V2"]["role"], chosen["V2"]["corrects"]) == ("c", "primary", "p")
 
 
 def test_latest_correction_counts():
-    exams = [examination("p", "primary", "1"), examination("c1", "correction", "2", correction_of="p", outcome="n"),
-             examination("c2", "correction", "3", correction_of="p", outcome="x")]
-    assert site_data.effective_examination(exams, by_outcome)[0]["id"] == "c2"
+    exams = [examination("p", "primary", "1"), examination("c1", "correction", "2", {"outcome": "n"}, correction_of="p"),
+             examination("c2", "correction", "3", {"outcome": "x"}, correction_of="p")]
+    assert counts(exams)[:2] == ("c2", "c2")
 
 
 def test_recheck_replaces_all_earlier_examinations():
-    exams = [examination("p", "primary", "1"), examination("k", "crosscheck", "2", "xy", crosscheck_of="p"),
-             examination("r", "recheck", "3", "xy", outcome="n")]
-    effective, info = site_data.effective_examination(exams, by_outcome)
-    assert (effective["id"], info["source"]) == ("r", "recheck")
+    exams = [examination("p", "primary", "1"), examination("k", "crosscheck", "2", operator="xy", crosscheck_of="p"),
+             examination("r", "recheck", "3", IGNORED, operator="xy")]
+    v2_id, v4_id, info = counts(exams)
+    assert (v2_id, v4_id, info["source"]) == ("r", "r", "recheck")
 
 
-def test_milder_result_counts_not_the_later_one():
-    # the crosscheck (later) finds a way to reject: milder, it counts
-    exams = [examination("p", "primary", "1", outcome="n"),
-             examination("k", "crosscheck", "2", "xy", crosscheck_of="p", outcome="rejected")]
-    effective, info = site_data.effective_examination(exams, by_outcome)
-    assert (effective["id"], info["crosscheck"]["differs"]) == ("k", True)
+def test_milder_v2_counts_not_the_later_one():
+    # the crosscheck (later) finds a way to reject on the 1st layer, the first one only on the 2nd
+    exams = [examination("p", "primary", "1", {"reject_level": 2, **RESPECTED}),
+             examination("k", "crosscheck", "2", {"reject_level": 1, **RESPECTED}, operator="xy", crosscheck_of="p")]
+    v2_id, v4_id, info = counts(exams)
+    assert (v2_id, v4_id, info["crosscheck"]["differs_by_kind"]) == ("k", "p", {"V2": True, "V4": False})
     # the crosscheck (later) finds no way to reject: the first one is milder and counts
-    exams = [examination("p", "primary", "1", outcome="rejected"),
-             examination("k", "crosscheck", "2", "xy", crosscheck_of="p", outcome="n")]
-    effective, info = site_data.effective_examination(exams, by_outcome)
-    assert (effective["id"], info["source"], info["crosscheck"]["differs"]) == ("p", "primary", True)
+    exams = [examination("p", "primary", "1"),
+             examination("k", "crosscheck", "2", {"outcome": "n"}, operator="xy", crosscheck_of="p")]
+    assert counts(exams)[0] == "p"
+
+
+def test_milder_v4_by_the_order_of_the_variants():
+    for first, second, expected in ((IGNORED, STRICT_NO_VENDOR, "k"), (STRICT_NO_VENDOR, LAX_ONLY, "k"),
+                                    (LAX_ONLY, RESPECTED, "k"), (RESPECTED, IGNORED, "p"), (LAX_ONLY, IGNORED, "p")):
+        exams = [examination("p", "primary", "1", first),
+                 examination("k", "crosscheck", "2", second, operator="xy", crosscheck_of="p")]
+        assert counts(exams)[1] == expected, (first, second)
+
+
+def test_mixed_case_decided_per_violation():
+    # examination 1 only V2 (code n, no reject session), examination 2 only V4 (rejected on the
+    # 1st layer, choice ignored): V2 from examination 2 (milder), V4 also from examination 2,
+    # because examination 1 cannot be evaluated for V4. Not the sum of the hits.
+    exams = [examination("p", "primary", "1", {"outcome": "n", "after_accept": phase(tc({1, 2}, {10}))}),
+             examination("k", "crosscheck", "2", IGNORED, operator="xy", crosscheck_of="p")]
+    v2_id, v4_id, info = counts(exams)
+    assert (v2_id, v4_id, info["crosscheck"]["differs"]) == ("k", "k", True)
+    assert info["crosscheck"]["ranks"] == {"V2": (2, 0), "V4": (None, 3)}
+    # the other way round: examination 1 only V4, examination 2 only V2 -> V2 from 1, V4 from 1
+    exams = [examination("p", "primary", "1", IGNORED),
+             examination("k", "crosscheck", "2", {"outcome": "n", "after_accept": phase(tc({1}))}, operator="xy",
+                         crosscheck_of="p")]
+    assert counts(exams)[:2] == ("p", "p")
+    # both can be evaluated: V2 and V4 decided separately, from different examinations
+    exams = [examination("p", "primary", "1", {"reject_level": 2, **RESPECTED}),
+             examination("k", "crosscheck", "2", {"reject_level": 1, **IGNORED}, operator="xy", crosscheck_of="p")]
+    assert counts(exams)[:2] == ("k", "p")
 
 
 def test_same_result_keeps_the_first_examination():
-    exams = [examination("p", "primary", "1"), examination("k", "crosscheck", "2", "xy", crosscheck_of="p")]
-    effective, info = site_data.effective_examination(exams, by_outcome)
-    assert (effective["id"], info["crosscheck"]["differs"]) == ("p", False)
+    exams = [examination("p", "primary", "1"), examination("k", "crosscheck", "2", operator="xy", crosscheck_of="p")]
+    v2_id, v4_id, info = counts(exams)
+    assert (v2_id, v4_id, info["crosscheck"]["differs"]) == ("p", "p", False)
 
 
 def test_several_first_examinations_latest_with_warning():
-    exams = [examination("p1", "primary", "1"), examination("p2", "primary", "2")]
-    effective, info = site_data.effective_examination(exams, by_outcome)
-    assert effective["id"] == "p2" and "2 fertige erste Prüfungen" in info["warnings"][0]
+    v2_id, v4_id, info = counts([examination("p1", "primary", "1"), examination("p2", "primary", "2")])
+    assert v2_id == "p2" and "2 fertige erste Prüfungen" in info["warnings"][0]
 
 
 def test_examination_without_label_is_ignored():
     unlabeled = {**examination("p2", "primary", "2"), "label": None}
-    assert site_data.effective_examination([examination("p1", "primary", "1"), unlabeled], by_outcome)[0]["id"] == "p1"
+    assert counts([examination("p1", "primary", "1"), unlabeled])[0] == "p1"
+
+
+def test_v3_extra_line_for_cookiewalls():
+    assert v.v3_cookiewall(label("w", purposes_pre=1, vendors_pre=None)) == {
+        "value": v.YES, "reason": None, "purposes": v.YES, "vendors": v.NA}
+    assert v.v3_cookiewall(label("w", settings=0))["value"] == v.NA
+    assert v.v3_cookiewall(label())["value"] == v.NA
 
 
 # --- crosscheck selection (Matte V-C)
@@ -250,7 +297,8 @@ def test_examination_without_label_is_ignored():
 def site(domain, cmp_id, examination_fields, operator="ae"):
     semi_examination = {**semi(**examination_fields), "id": f"e-{domain}", "operator": operator,
                         "url": f"https://www.{domain}"}
-    return {"domain": domain, "cmp_id": cmp_id, "semi": semi_examination, "source": "primary", "crosscheck": None}
+    return {"domain": domain, "cmp_id": cmp_id, "semi": semi_examination, "semi_label": semi_examination,
+            "source": "primary", "crosscheck": None}
 
 
 def test_selection_per_kind_and_cmp():
