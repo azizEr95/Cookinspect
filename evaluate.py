@@ -355,22 +355,11 @@ def format_reasons(counter):
     return "; ".join(f"{reason} ({n})" for reason, n in counter.most_common()) or "keine"
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--test", action="store_true", help="data/test.sqlite")
-    parser.add_argument("--purpose", choices=["vorab", "messung"])
-    args = parser.parse_args()
-    if args.test == bool(args.purpose):
-        parser.error("give either --test or --purpose vorab|messung")
-    purpose = args.purpose or "test"
-
-    conn = database.connect(config.database_path(purpose))
+def write_evaluation(conn, purpose, out_dir, database_name=""):
+    """Writes sites.csv, tables.md and tables.json to out_dir; returns the Markdown."""
     sites = site_data.load_sites(conn, v.RANKS, purpose)
     results = {domain: evaluate_site(site) for domain, site in sites.items()}
     semi_sites = {d: r for d, r in results.items() if sites[d]["semi_label"]}
-    out_dir = config.DATA_DIR / f"evaluation-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
-    out_dir.mkdir(parents=True)
-
     rows = [csv_row(sites[d], r) for d, r in results.items()]
     columns = list(dict.fromkeys(key for row in rows for key in row))
     columns = [c for c in columns if not c.endswith("_reason")] + [c for c in columns if c.endswith("_reason")]
@@ -387,7 +376,7 @@ def main():
     markdown = "\n\n".join([
         f"# Auswertung ({purpose}, {database.now()})",
         f"{len(sites)} Seiten: {sum(1 for s in sites.values() if s['automatic'])} im automatischen Modus, "
-        f"{len(semi_sites)} halbautomatisch mit gültigem Ergebnis. Datenbank: `{config.database_path(purpose)}`.",
+        f"{len(semi_sites)} halbautomatisch mit gültigem Ergebnis. Datenbank: `{database_name}`.",
         "## Tab. II: Trichter (Vergleich Matte, .de)", tab_ii_text,
         "## Tab. III: Verstöße (Vergleich Matte; in eckigen Klammern Mattes Werte für alle 6 TLDs)", tab_iii_text,
         TAB_III_MAPPING,
@@ -400,6 +389,22 @@ def main():
         {"purpose": purpose, "created": database.now(), "tab_ii": funnel, "tab_iii": figures,
          "sites": {d: {k: r for k, r in res.items()} for d, res in results.items()}, "warnings": warnings},
         indent=2, ensure_ascii=False, default=sorted))
+    return markdown
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--test", action="store_true", help="data/test.sqlite")
+    parser.add_argument("--purpose", choices=["vorab", "messung"])
+    args = parser.parse_args()
+    if args.test == bool(args.purpose):
+        parser.error("give either --test or --purpose vorab|messung")
+    purpose = args.purpose or "test"
+
+    conn = database.connect(config.database_path(purpose))
+    out_dir = config.DATA_DIR / f"evaluation-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
+    out_dir.mkdir(parents=True)
+    markdown = write_evaluation(conn, purpose, out_dir, config.database_path(purpose))
     print(f"{out_dir}/tables.md, sites.csv, tables.json\n")
     print(markdown)
 

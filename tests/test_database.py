@@ -1,7 +1,8 @@
 """Database (schema.sql, database.py, merge_databases.py): inserting, foreign keys, TC strings
 without duplicates and with all IDs, nothing overwritten, crosscheck and correction next to
 the first examination, an example query for V4 strict, the evaluation reading the database
-(site_data.py), merging two files. Needs Node."""
+(site_data.py) and its output files (evaluate.py), merging two files. Needs Node."""
+import csv
 import json
 import shutil
 import sqlite3
@@ -11,6 +12,7 @@ import pytest
 
 import database
 import decoder
+import evaluate
 import merge_databases
 import site_data
 import violations
@@ -311,3 +313,23 @@ def test_evaluation_reads_the_database_and_takes_the_milder_crosscheck(conn):
     assert violations.v4(site["semi"], "strict")["value"] == violations.NO
     assert violations.v4(site["crosscheck"]["primary"], "strict")["value"] == violations.YES
     assert violations.v4(site["crosscheck"]["primary"], "lax")["purposes_after_reject"] == list(range(1, 12))
+
+
+def test_evaluation_writes_csv_and_json(conn, tmp_path, monkeypatch):
+    monkeypatch.setattr(evaluate, "gvl_for", lambda version, policy: None)
+    run_id = database.insert_run(conn, METADATA)
+    semi_examination(conn, run_id, "rejected", FIXTURES["all_purposes"], FIXTURES["all_purposes"])
+    markdown = evaluate.write_evaluation(conn, "test", tmp_path)
+    with open(tmp_path / "sites.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert [(r["domain"], r["code"], r["v4_strict"], r["v4_matte"], r["v4_purposes_after_reject"]) for r in rows] == [
+        ("example.de", "r", "ja", "ja", " ".join(map(str, range(1, 12))))]
+    assert rows[0]["v1"] == "nicht auswertbar" and rows[0]["v1_reason"] == "kein automatischer Modus"
+    header = list(rows[0])
+    assert header[:3] == ["rank", "domain", "cmp_id"]
+    assert all(c.endswith("_reason") for c in header[header.index("v1_reason"):])   # reasons at the end
+    tables = json.loads((tmp_path / "tables.json").read_text())
+    assert tables["tab_iii"]["v4"]["hits"] == 1 and tables["tab_iii"]["v4"]["denominator"] == 1
+    assert tables["sites"]["example.de"]["v4_strict"]["value"] == "ja"
+    assert (tmp_path / "tables.md").read_text().strip() == markdown.strip()
+    assert "Kein Vorfilter-Lauf" in markdown

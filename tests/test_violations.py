@@ -1,6 +1,9 @@
 """Violations (violations.py), the rules which examination counts (site_data.py) and the
 selection for the crosscheck (crosscheck.py) and the tables (evaluate.py), on small hand-made
 sites without a database."""
+import argparse
+import csv
+import json
 import random
 
 import crosscheck
@@ -356,3 +359,25 @@ def test_e5_consent_for_vendors_missing_in_the_gvl():
     known = {**tc({1}, {10, 99}), "gvl_available": True, "unknown_vendors": {99}}
     assert v.unknown_vendor_consent(phase(known))["vendors"] == 1
     assert v.unknown_vendor_consent(phase({**known, "gvl_available": False}))["value"] == v.NA
+
+
+def test_crosscheck_files_per_person_without_the_first_result(tmp_path):
+    violating = {"after_reject": phase(tc({1, 2}, {10})), "after_accept": phase(tc({1, 2}, {10}))}
+    clean = {"after_reject": phase(tc()), "after_accept": phase(tc({1, 2}, {10}))}
+    sites = {s["domain"]: s for s in [
+        site("a.de", 6, violating, "ae"), site("b.de", 6, clean, "ae"),
+        site("d.de", 345, {"outcome": "n"}, "xy"), site("e.de", 345, clean, "xy")]}
+    crosscheck.command_select(argparse.Namespace(operators="ae,xy", seed=crosscheck.SEED), sites, tmp_path)
+    files = sorted(p.name for p in tmp_path.iterdir())
+    assert files == ["crosscheck-ae.csv", "crosscheck-xy.csv", "selection.json"]
+    for checker, expected in (("xy", {"a.de", "b.de"}), ("ae", {"d.de", "e.de"})):
+        text = (tmp_path / f"crosscheck-{checker}.csv").read_text()
+        rows = list(csv.DictReader(text.splitlines()))
+        assert {r["domain"] for r in rows} == expected        # sites of the other person only
+        assert list(rows[0]) == ["domain", "url", "examination_id", "cmp_id"]
+        for hint in ("Verstoß", "unauffällig", "V2", "V4", "ja", "nein", "ae" if checker == "xy" else "xy"):
+            assert hint not in text, hint                    # nothing about the first result
+    key = json.loads((tmp_path / "selection.json").read_text())
+    assert key["seed"] == crosscheck.SEED
+    assert {(k["domain"], k["kind"], k["selected_as"], k["checked_by"]) for k in key["selection"]} >= {
+        ("a.de", "V4", "Verstoß", "xy"), ("d.de", "V2", "Verstoß", "ae")}

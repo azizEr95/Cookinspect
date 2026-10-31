@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-31, Branch `tcf22-port`, Phase 8 fertig (mit Test-Daten geprüft, Bericht an die Person). Nichts gepusht.
+Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (Lauf durch die Person steht aus), Phase 11 im Entwurf. Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -89,9 +89,18 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
 - Trichter und Vergleich mit Matte Tab. II/III; Spalte Original-Cookinspect für Tab. II maßgeblich.
 - Alte `extract_results.py` ersetzen (erledigt in Phase 8: `evaluate.py`).
 
-## Phase 9: Unit-Tests
+## Phase 9: Unit-Tests (fertig)
 
-Vorhanden: 128 Tests (darunter Verstoß-Funktionen, Rangfolge der Prüfungen, Auswahl der Gegenprüfung, Varianten für `w`).
+Vorhanden: 137 Tests. Offene Liste aus dem Plan vor Phase 8 (Stand 81 Tests), mit Stand:
+
+- [x] Verstoß-Funktionen aus Phase 8 mit den Test-Strings aus `tests/tc_fixtures.json` (`decode/fixtures.mjs`): `tests/test_violations_fixtures.py` nutzt `no_consent`, `purposes_1_10`, `all_purposes`, `all_purposes_no_vendors`, `li_only`, `li_forbidden_3_to_6`, `without_disclosed_vendors`, `policy_version_3` (dekodiert und gespeichert wie im Crawl); dazu `tests/test_violations.py` mit selbst gebauten Daten.
+- [x] Halbautomatischer Ablauf ohne Browser (Labels, Rollen, Korrekturen): Labels und Code-Vorschlag in `tests/test_semi_automatic.py`; Rollen, Korrektur, Neuprüfung, Gegenprüfung (mildere Einstufung pro Verstoßart, gemischter Fall) in `tests/test_violations.py`.
+- [x] Varianten für `w`: V2 ausgeschlossen / als V2, V3-Zusatzzeile (`tests/test_violations.py`).
+
+Dazu in Phase 9:
+
+- [x] Ausgabedateien von `evaluate.py` (`sites.csv`, `tables.json`, `tables.md`): `tests/test_database.py`.
+- [x] `crosscheck.py select`: eine Datei pro prüfender Person, nur Seiten der anderen Person, kein Hinweis auf das erste Ergebnis, Schlüssel in `selection.json`: `tests/test_violations.py`.
 
 ## Phase 10: Testlauf
 
