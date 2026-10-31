@@ -10,9 +10,21 @@
   // @iabtechlabtcf/core 1.5.22 (test GVL): no consent before and after rejecting, purposes 1-11 +
   // vendors 755, 793 after accepting. ?reload_after_choice=1 reloads the page right after the choice, as many
   // CMPs do (docs/entscheidungen.md, E2). The choice survives the reload in localStorage.
+  // ?verstoss=... makes the banner violate on purpose, for a test run of the crosscheck (Phase 10):
+  //   v2n        no way to reject (only "Alle akzeptieren")             -> code n, V2
+  //   v4streng   after rejecting all purposes 1-11, but no vendor       -> V4 strict without vendor consent
+  //   v4matte    after rejecting the same string as after accepting     -> V4 Matte variant
+  //   v4locker   after rejecting purposes 1 and 10 (vendor 755)         -> V4 lax only
+  // Without the parameter (or with any other value) the choice is respected.
   (function () {
     var BEFORE = "CQs2X0AQs2X0AEsABAENBkFgAAAAAAAAAAYgAAAAAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA";       // tests/tc_fixtures.json: no_consent
     var ACCEPTED = "CQs2X0AQs2X0AEsABAENBkFgAP_gAAAAAAYgGMwAgF5gMZAAAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA";   // all_purposes (vendors 755, 793)
+    var AFTER_REJECT = {
+      v4streng: "CQs2X0AQs2X0AEsABAENBkFgAP_gAAAAAAYgAAAAAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA",   // all_purposes_no_vendors
+      v4matte: ACCEPTED,
+      v4locker: "CQs2X0AQs2X0AEsABAENBkFgAIBAAAAAAAYgF5wAQF5gAAAA.IGMwAgF5gMZA.YAAAAAAAAAAA"              // purposes_1_10 (purposes 1 and 10, vendor 755)
+    };
+    var violation = new URLSearchParams(location.search).get("verstoss");
     var chosen = localStorage.getItem("pruefstand_choice");
     var listeners = {}, nextId = 1;
     var state = { eventStatus: "tcloaded", tcString: chosen || BEFORE };   // the stored choice survives a reload
@@ -37,8 +49,9 @@
     });
     if (!chosen) setTimeout(function () { state.eventStatus = "cmpuishown"; fire(); }, 800);
     else document.addEventListener("DOMContentLoaded", function () { document.getElementById("banner").style.display = "none"; });
+    if (violation === "v2n") document.addEventListener("DOMContentLoaded", function () { document.getElementById("reject").remove(); });
     window.__userClick = function (choice) {
-      var chosenString = choice === "reject" ? BEFORE : ACCEPTED;   // rejecting: no consent
+      var chosenString = choice === "reject" ? (AFTER_REJECT[violation] || BEFORE) : ACCEPTED;   // rejecting: no consent
       state.eventStatus = "useractioncomplete"; state.tcString = chosenString;
       localStorage.setItem("pruefstand_choice", chosenString);
       document.cookie = "euconsent-v2=" + chosenString + "; path=/";

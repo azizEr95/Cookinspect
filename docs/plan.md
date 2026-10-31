@@ -106,9 +106,11 @@ Dazu in Phase 9:
 
 10 Seiten aus GQ3LK in beiden Modi, Ergebnis prüfen (Bildschirmfotos der Banner als Kontrolle). Kein großer Lauf ohne Freigabe.
 
+Vorbereitet (2026-10-31): Die Mini-CMP am Prüfstand erzeugt mit `?verstoss=v2n|v4streng|v4matte|v4locker` gezielt Verstöße; `lists/pruefstand_gegenpruefung.csv` hat sechs Testseiten dafür. `tests/check_crosscheck_flow.py` spielt die Gegenprüfung mit Klicks aus dem Testskript durch (erste Prüfung → `select` → blinde Prüfung xy → `evaluate` → `recheck` → Auswertung); Lauf am 2026-10-31 ohne Fehler. Offen: der Lauf durch die Person (10 Seiten automatisch, die 5 TCF-Seiten halbautomatisch, Gegenprüfung am Prüfstand).
+
 ## Phase 11: Doku
 
-README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs), `docs/abweichungen.md` vervollständigen (u. a. Abweichungen Paper ↔ Code von Cookinspect, Befunde F1–F8), Satz für den Methodenteil.
+README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs): Entwurf liegt vor, nicht committet. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Satz für den Methodenteil: Entwurf an die Person.
 
 ## Offene Punkte außerhalb der Phasen
 

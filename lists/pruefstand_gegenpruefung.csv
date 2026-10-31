@@ -1,0 +1,7 @@
+domain,url
+pruefstand-ok-1.test,http://localhost:8001/top.html
+pruefstand-ok-2.test,http://localhost:8001/top.html?reload_after_choice=1
+pruefstand-v2n.test,http://localhost:8001/top.html?verstoss=v2n
+pruefstand-v4streng.test,http://localhost:8001/top.html?verstoss=v4streng
+pruefstand-v4matte.test,http://localhost:8001/top.html?verstoss=v4matte
+pruefstand-v4locker.test,http://localhost:8001/top.html?verstoss=v4locker

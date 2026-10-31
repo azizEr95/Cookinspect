@@ -186,15 +186,15 @@ def tab_iii(results, semi_sites):
                "any": {"hits": any_main, "denominator": len(semi_sites), "text": percent(any_main, len(semi_sites))}}
     v2_text = " / ".join(f"{v2[h]['text']} ({v.COOKIEWALL_TEXT[h]})" for h in v.COOKIEWALL_HANDLINGS)
     rows = [
-        ["1 bis weniger als alle Zwecke", f"{v1_some['text']} [Matte {MATTE_TAB_III['v1_some']}]", "–", "–",
+        ["1 bis weniger als alle Zwecke (V4: locker ohne Matte-Variante)", f"{v1_some['text']} [Matte {MATTE_TAB_III['v1_some']}]", "–", "–",
          f"{v4_some['text']} [Matte {MATTE_TAB_III['v4_some']}]"],
-        ["alle Zwecke (1–11, bei Policy < 4: 1–10)", f"{v1_all['text']} [Matte {MATTE_TAB_III['v1_all']}]", "–", "–",
+        ["alle Zwecke, 1–11 bzw. bei Policy < 4: 1–10 (V4: Matte-Variante)", f"{v1_all['text']} [Matte {MATTE_TAB_III['v1_all']}]", "–", "–",
          f"{v4_all['text']} [Matte {MATTE_TAB_III['v4_all']}]"],
         ["**Gesamt (gewertete Fälle)**", f"**{v1_total['text']}** [Matte {MATTE_TAB_III['v1']}]",
          f"**{v2_text}** [Matte {MATTE_TAB_III['v2']}]", f"**{v3['text']}** [Matte {MATTE_TAB_III['v3']}]",
          f"**{v4_all['text']}** [Matte {MATTE_TAB_III['v4']}]"],
     ]
-    text = table(["Anzahl Zwecke", "V1 Zustimmung vor der Wahl", "V2 Keine Ablehnmöglichkeit",
+    text = table(["Anzahl Zwecke (V1) / Variante (V4)", "V1 Zustimmung vor der Wahl", "V2 Keine Ablehnmöglichkeit",
                   "V3 Vorausgewählt", "V4 Wahl nicht respektiert"], rows)
     text += (f"\n\nIrgendein Verstoß (V1 Hauptzahl, V2 mit w ausgeschlossen, V3 Zwecke oder Vendoren, "
              f"V4 Matte-Variante): **{figures['any']['text']}** [Matte {MATTE_TAB_III['any']}]")
@@ -206,7 +206,7 @@ TAB_III_MAPPING = """Zuordnung zu Matte Tab. III:
 - V1 Gesamt ↔ „1 to 5 purposes“ (Spalte „Consent stored before choice“, Summe beider Zeilen): Kanal 1, beide Vorher-Snapshots des automatischen Modus zeigen ≥ 1 Zweck. Zeile „alle Zwecke“ ↔ „5 purposes“, Zeile „1 bis weniger als alle“ ↔ „1 to 4 purposes“. Nenner: alle auswertbaren Seiten des automatischen Modus (Matte: 1426 TCF-Seiten); nicht auswertbare Seiten (E7) stehen unten.
 - V2 ↔ „No way to opt out“: Code `n` (Ablehnen gar nicht möglich); `w` je nach Variante ausgeschlossen oder als V2 gezählt. Nenner: alle halbautomatisch geprüften Seiten mit gültigem Ergebnis (Matte: 560).
 - V3 ↔ „Pre-selected choices“: Zwecke **oder** Vendoren vorausgewählt; Nenner wie bei Matte alle Seiten mit kostenloser Ablehnmöglichkeit (Matte: 508), ohne 2. Ebene = nicht vorausgewählt. Die Hauptzahl mit dem Nenner „2. Ebene vorhanden“ steht unten (V3).
-- V4 Matte-Variante ↔ „5 purposes“ (in Tab. III fett, gewertet): nach Ablehnen alle Zwecke gesetzt, die nach Akzeptieren gesetzt sind, und ≥ 1 Vendor-Consent. V4 locker (≥ 1 Zweck nach Ablehnen) ↔ „1 to 4 purposes“ zusammen mit „5 purposes“; die Zeile „1 bis weniger als alle“ zeigt locker **ohne** die Matte-Variante, wie Mattes Zeile „1 to 4 purposes“ (dort nicht gewertet). Nenner: Seiten mit Code `r` und auswertbarem Snapshot (Matte: 508). Berechnet auf den Snapshots nach dem Reload.
+- V4 Matte-Variante ↔ „5 purposes“ (in Tab. III fett, gewertet): nach Ablehnen alle Zwecke gesetzt, die nach Akzeptieren gesetzt sind, und ≥ 1 Vendor-Consent. V4 locker (≥ 1 Zweck nach Ablehnen) ↔ „1 to 4 purposes“ zusammen mit „5 purposes“; die erste Zeile zeigt bei V4 locker **ohne** die Matte-Variante, wie Mattes Zeile „1 to 4 purposes“ (dort nicht gewertet); dazu gehört auch „streng ohne Vendor-Consent“, selbst wenn alle Zwecke gesetzt sind. Bei V4 benennen die Zeilen also die Variante, nicht die Zahl der Zwecke. Nenner: Seiten mit Code `r` und auswertbarem Snapshot (Matte: 508). Berechnet auf den Snapshots nach dem Reload.
 - Irgendein Verstoß ↔ „Any violation“ (Matte: 304/560)."""
 
 

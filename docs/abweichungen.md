@@ -104,3 +104,34 @@ Folge für den Vergleich mit Matte: Jede Website mit einer Regel wie `Disallow: 
 | Der Listener in Kanal 1 fragt alle 50 ms nach `__tcfapi`. | Zwischenstände vor der Anmeldung (z. B. ein frühes `tcloaded`) können fehlen; der Stand zum Zeitpunkt der Anmeldung kommt immer an. |
 | Manche CMPs rufen den Listener mit leerem `tcData` auf (amazon.de, CMP 376, 2026-10-29: kein `eventStatus`, kein `tcString`, keine `listenerId`; ping meldet `displayStatus: hidden`). | Kein TC-String über Kanal 1; das Ereignis wird als `emptyTcData` markiert und nicht als „keine Zustimmung“ gewertet. `removeEventListener` ist dort nicht möglich (keine `listenerId`). |
 | Kanal 2 (Dritt-Position) ist nur messbar, wenn die Seite ein fremdes iframe enthält. | Ohne fremdes iframe: „nicht messbar“; die Quote wird pro Phase ausgewiesen. |
+
+## Fehler im v2-Code von Cookinspect (2021)
+
+Stand Commit 948a85f unseres Forks (= letzter Stand von Matte, „update to tcfv2“). Die Zeilenangaben sind am 2026-10-31 gegen die History geprüft. Keiner dieser Fehler betrifft das Paper (2019, TCF v1.1); sie zeigen, warum der alte Code für eine v2-Nachmessung nicht taugt. Spalte rechts: wie die Neuimplementierung es löst.
+
+| Nr. | Befund | Stelle (948a85f) | Neuimplementierung |
+|---|---|---|---|
+| F1 | `count_nb_purposes` und `count_nb_vendors` liefern für v2 `purposeConsents.maxId_` bzw. `vendorConsents.maxId_`, also die höchste ID statt der Anzahl; durch `JSON.stringify` des TCModel geht `set_` verloren, die IDs selbst sind nicht mehr da | `iab_data_collection.py:222–232`, `decode_IAB_API_strings/decode_IAB_API_strings_v2.js:5` | alle IDs als Listen (`decode/tcstring.mjs`, Tabelle `tc_string_entry`) |
+| F2 | der postMessage-Test liest `val.TCData` statt `tcString`; Kanal 2 liefert in v2 nie etwas | `extensions/probe_cmp_postmessage/content_scripts/uCookie.js:106`, `background.js:42` | Kanal 2 liest `tcString` aus der Antwort auf `__tcfapiCall` (`capture.py`) |
+| F3 | die Erweiterung loggt `sc-postMessage_v2:`, der Regex erwartet `sc-postMessage:` | `extensions/monitor_postmessages/content_scripts/monitor_postmessages.js:35`, `iab_data_collection.py:35` | keine Konsolen-Logs mehr; Ereignisse kommen über WebDriver BiDi direkt nach Python (E1) |
+| F4 | v2-Strings aus postMessage werden ohne `v2=True` an `consent_string_violations` übergeben und mit dem v1-Decoder dekodiert | `iab_data_collection.py:661` (im v2-Zweig; die gleiche Zeile 656 steht im v1-Zweig und ist dort richtig) | die Version wird am String erkannt, nicht am Aufruf (CLAUDE.md, Technik) |
+| F5 | das Argument `v2` landet wegen seiner Position im Parameter `try_getting_consent_string` von `get_through_logs_for_violations(browser, website, seen_consent_strings, try_getting_consent_string=False, v2=False)` | Aufruf `iab_data_collection.py:772`, Definition `:783` | entfällt (keine Log-Auswertung) |
+| F6 | der Shared Cookie zählt nur, wenn v1- **und** v2-Cookie da sind; seit dem v2-Commit ist damit auch die v1-Erkennung im halbautomatischen Modus kaputt | `iab_data_collection.py:704` | entfällt (kein Shared Cookie in TCF v2) |
+| F7 | `raw_post_data is list` ist immer falsch (Vergleich mit dem Typ statt `isinstance`); Formulardaten werden nie ausgewertet; die Erweiterung liest nur `requestBody.raw`, nicht `formData` | `iab_data_collection.py:854`, `extensions/watch_requests/content_scripts/background.js:15` | Request-Bodies über BiDi; Formulardaten, JSON und OpenRTB/Prebid werden ausgewertet (`capture.consent_signals`) |
+| F8 | die Browser-Logs werden beim Lesen verbraucht; nach dem v2-Durchlauf sieht der v1-Durchlauf nichts mehr (im Code selbst vermerkt: „might bug if tcfv2 was done before“) | `cookinspect.py:451–454` | entfällt (keine Log-Auswertung) |
+
+## Abweichungen Paper ↔ Code von Cookinspect
+
+Was das Paper beschreibt und was der Code (948a85f) tut. Geprüft am 2026-10-31.
+
+| Nr. | Paper | Code (948a85f) | Neuimplementierung |
+|---|---|---|---|
+| 1 | robots.txt wird respektiert (IV-A) | `-a` (`automatic_violations_check`, `cookinspect.py:420`) und `-t` (`test_if_website_uses_cmp_only`, `:341`) setzen `bypass_robots_txt=True`: robots.txt wird geprüft, die Seite aber trotzdem geladen. Nur `-a2` (`automatic_violations_check_full`, `:360`) hält sich daran | in allen Modi respektiert |
+| 2 | Shared-Cookie-Test im automatischen Crawl (V-A) | nur in `-a2` (`add_shared_cookie=True`, `cookinspect.py:392`), nicht in `-a` | entfällt (kein Shared Cookie in v2) |
+| 3 | postMessage-Test nur in Dritt-iframes unter `__cmpLocator` (S. 4, „all third-party iframes that have the __cmpLocator iframe as a parent“) | das Skript läuft in allen Frames einschließlich Hauptframe (`all_frames: true`, `extensions/probe_cmp_postmessage/manifest.json:18`) und fragt alle 2 s neu (`background.js:65–67`) | Kanal 2 nur aus vorhandenen fremden iframes, einmal pro Snapshot (`capture.py`) |
+| 4 | nach der Wahl 3 s warten, dann neu laden (V-B) | nach der Wahl 2 s warten (`SLEEP_TIME_COOKIE_WAIT = 2`, `utils.py:29`, `iab_data_collection.py:700`) und auslesen, dann neu laden, 3 s warten (`cookinspect.py:471–472`), erneut auslesen | auslesen nach `useractioncomplete` (höchstens 10 s), nach 3 s neu laden, nach weiteren 3 s erneut auslesen; V4 auf dem Snapshot nach dem Reload |
+| 5 | erscheint kein Banner, bis zu 3-mal neu laden (Anhang D) | fehlt im Code (kein Neuladen vor der Wahl) | bis zu 3-mal (`config.MAX_BANNER_RELOADS`), danach Code `b` |
+| 6 | Gegenprüfung durch eine zweite Person (V-C) | nicht unterstützt; ein erneuter Lauf setzt Bool-Flags nur auf `True`, nie zurück | eigene Prüfungen mit Rolle, nichts wird überschrieben (`crosscheck.py`, `site_data.py`) |
+| 7 | Tab. X: User-Agent `HeadlessChrome/73.0.3683.103`, Software Chromium 76.0.3809.100 | Läufe mit Erweiterungen erzwingen ein sichtbares Fenster (`cookinspect.py:244–247`: „We can't run extensions with headless chrome“); User-Agent und Browserversion in Tab. X passen nicht zueinander | sichtbares Fenster in allen Modi; Versionen von Chrome for Testing, chromedriver und User-Agent werden pro Lauf gespeichert |
+| 8 | – | nur im Code: Vendor-Fälle 1–5 über `override_cmp`, Auswertung von `gdpr=0`, Vergleich `vendorConsents`/`consentData`, „different consent strings“ | `gdpr=0` und alle Consent-Felder in Requests werden gespeichert; die Vendor-Fälle sind nicht Teil der Nachmessung |
+| 9 | – | für eine v1-Nachstellung den Stand vor dem v2-Commit nehmen (`f32dfda`, vor `88fd048` „update to tcfv2: python code“), wegen F6 | – (wir messen v2.2/v2.3) |
