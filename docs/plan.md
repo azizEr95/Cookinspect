@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-31, Branch `tcf22-port`, Phase 7 fertig, Ablauf nach dem ersten Test an echten Seiten umgestellt (Test der Person läuft). Nichts gepusht.
+Stand: 2026-10-31, Branch `tcf22-port`, Phase 8 fertig (mit Test-Daten geprüft, Bericht an die Person). Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -42,7 +42,7 @@ Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–
 | `robots.py` | robots.txt: Protego (gecrawlt), urllib und Original-Cookinspect als Vergleich; Ausweichregeln HTTPS→HTTP, ohne www; 429 wie 5xx |
 | `page.py` | Laden mit 3 Versuchen, HTTP-Status der Hauptseite, Erkennung von Sperrseiten |
 | `prefilter.py` | Vorfilter mit Trichter; `--test` oder `--purpose vorab` bzw. `--purpose messung`; schreibt Datenbank und `tcf_sites.csv` |
-| `capture.py` | Kanäle ① Listener (Preload-Skript, `removeEventListener`), ② fremdes iframe, Cookies/localStorage, Requests (GET/POST, Formulare, OpenRTB); `mark()` + `wait_for_event(..., after=mark)` |
+| `capture.py` | Kanäle: 1 Listener (Preload-Skript, `removeEventListener`), 2 fremdes iframe, Cookies/localStorage, Requests (GET/POST, Formulare, OpenRTB); `mark()` + `wait_for_event(..., after=mark)` |
 | `decode/tcstring.mjs`, `decode/cli.mjs`, `decoder.py` | Decoder „TC-String rein, IDs als JSON raus“ (`@iabtechlabtcf/core` 1.5.22), Prüfungen pro String |
 | `consent_lists.py` | GVL nach `vendorListVersion` des Strings (v3/v2-Archiv), CMP-Liste pro Lauf, Prüfung der CMP-ID |
 | `schema.sql`, `database.py` | SQLite, nur Einfügen (Trigger), alle IDs in `tc_string_entry`; Datei pro Zweck |
@@ -54,13 +54,18 @@ Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–
 | `run_list.py` | gemeinsamer Einstieg: `run_list.py prefilter` bzw. `automatic` bzw. `semi-automatic` |
 | `tests/` | 81 Unit-Tests (`venv/bin/python -m pytest -q`); Live-Prüfungen `check_capture.py` (lokaler Prüfstand), `check_capture_real.py` |
 
-Noch alt und zu ersetzen: `extract_results.py` (Phase 8; importiert das entfernte `utils.py`, nicht lauffähig). README ist veraltet (PostgreSQL, `run.sh`).
+`extract_results.py` ist entfernt (ersetzt durch `evaluate.py`). README ist veraltet (PostgreSQL, `run.sh`).
 
 ## Phase 7: halbautomatischer Modus (fertig)
 
 `semi_automatic.py` (auch über `run_list.py semi-automatic`). Ablauf je Code: `r` Ablehnen-, dann Akzeptieren-Sitzung; `n`/`w` nur Akzeptieren in der ersten Sitzung; `b` (kein Banner nach 3-mal Neuladen) und `x` keine weitere Sitzung. Label: Code (`w` nur ohne kostenloses Ablehnen, sonst `r`), Bezahl-Option `cookiewall_seen` (unabhängig vom Code), Ebene (V2), `settings_layer_available`, V3 Zwecke/Vendoren, Text der Schließen-Schaltfläche, Notiz; 10-s-Timer („t“) für die Datenschutzerklärung. Reihenfolge (seit dem ersten Test an t-online.de, 2026-10-31): Die Fragen zum Banner (2. Ebene, V3, Bezahl-Option, kostenloses Ablehnen und Ebene) kommen, solange das Banner zu sehen ist; das Werkzeug schlägt daraus den Code vor, die Person bestätigt oder ändert ihn. Nach dem Klick wird die Sitzung sofort gespeichert und der Browser geschlossen; danach nur noch Schaltflächentext und Notiz. chromedriver ist auf `config.CHROME_VERSION` festgelegt (vorher nahm Selenium Manager .80). Bildschirmfotos vor der Aktion und nach dem Schließen. Gegenprüfung blind (`--role crosscheck`, CSV mit `examination_id`), nicht durch dieselbe Person. Fertige Seiten werden beim nächsten Start übersprungen. Geprüft mit `tests/check_semi_automatic.py` am lokalen Prüfstand; **Test an 2–3 echten Seiten macht die Person selbst** (`lists/test_semi_automatic.txt`).
 
-## Phase 8: Verstoß-Logik und Auswertung
+## Phase 8: Verstoß-Logik und Auswertung (fertig)
+
+Umgesetzt: `site_data.py` (Datenbank → Dicts pro Seite; Rangfolge: Korrektur ersetzt die korrigierte Prüfung, Neuprüfung ersetzt alle früheren, sonst das mildere Ergebnis von erster Prüfung und Gegenprüfung; mehrere erste Prüfungen: die jüngste, mit Warnung), `violations.py` (austauschbare Funktionen, Ergebnis „ja“/„nein“/„nicht auswertbar“ mit Grund), `evaluate.py` (`run_list.py evaluate`: `sites.csv`, `tables.md`, `tables.json` mit Tab. II, Tab. III samt Zuordnung zu Matte, Details), `crosscheck.py` (`select`: Auswahl nach V-C getrennt für V4 und V2, CSV pro Person ohne Hinweis auf das erste Ergebnis, Schlüssel in `selection.json`; `evaluate`: Vergleich und `recheck.csv`). Hauptzahl Kanal 1, Variante „Matte-Kanäle“; V4 auf den Snapshots nach dem Reload, direkt nach der Aktion getrennt. Mit `data/test.sqlite` geprüft (Vorfilter 10 Domains, automatisch und halbautomatisch t-online, amazon, bild). Unit-Tests: `tests/test_violations.py`, `tests/test_database.py`.
+
+Vorgaben (Stand vor der Umsetzung):
+
 
 Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebnis gespeichert. Definitionen in CLAUDE.md, Abschnitt „Definitionen der Verstöße“. Beispielabfrage V4 streng: `tests/test_database.py`.
 
@@ -69,10 +74,10 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
 - V3: Nenner = Seiten mit 2. Ebene (`settings_layer_available`); Zwecke und Vendoren getrennt.
 - V4: streng (nur auswertbar, wenn Zwecke nach Akzeptieren nicht leer), Matte-Variante (streng + ≥ 1 Vendor), locker; Zusatzzahlen {1…10}, {1…11}. Nenner ohne `n`, `b`, `x`.
 - V4 bei leerem Snapshot direkt nach der Aktion: Snapshot nach dem Reload nehmen und markieren. Fall amazon.de (Test 2026-10-31): `__tcfapi` liefert vorher und direkt nach Ablehnen/Akzeptieren nur leeres tcData, kein `useractioncomplete`; erst nach dem Reload ein TC-String (nach Ablehnen keine Zwecke, nach Akzeptieren 1, 2, 4, 7, 9, 10 mit 102 Vendoren).
-- Für jede Seite gilt die **jüngste Korrektur**; bei Abweichung in der Gegenprüfung das mildere Ergebnis und alle Seiten der CMP neu prüfen.
+- Rangfolge der Prüfungen: Korrektur ersetzt die korrigierte Prüfung, Neuprüfung alle früheren; bei Abweichung in der Gegenprüfung das mildere Ergebnis und alle Seiten der CMP neu prüfen.
 - Berechtigtes Interesse nach Ablehnen getrennt, v. a. Zwecke 3–6 (nicht als V4).
 - Weitergabe an Dritte: TC-Strings mit Zustimmung in Requests an Dritte, (a) vor jeder Aktion, (b) nach Ablehnen.
-- Quote „nicht messbar“ für Kanal ② pro Phase (vorher, nach Ablehnen, nach Akzeptieren).
+- Quote „nicht messbar“ für Kanal 2 pro Phase (vorher, nach Ablehnen, nach Akzeptieren).
 - Cookiewalls: Umgang mit `w` konfigurierbar („ausschließen“ / „als V2 zählen“), **beide Varianten ausweisen**.
 - Vorgemerkt:
   - **E5:** Vendor-Consents außerhalb von `vendor_disclosed` (nur Strings mit disclosedVendors; v2.2-Strings „nicht auswertbar“); dazu Vendoren, die in der GVL des Strings fehlen (wie Matte Anhang F).
@@ -82,11 +87,11 @@ Austauschbare Funktionen bzw. Views über der Datenbank, nichts wird als Ergebni
   - Sperren (`blocked`) und `empty_tc_data` zählen.
   - **E7:** TCF-API ohne TC-String (z. B. amazon.de) bei V1 als „nicht auswertbar“ getrennt ausweisen, nicht als „kein Verstoß“.
 - Trichter und Vergleich mit Matte Tab. II/III; Spalte Original-Cookinspect für Tab. II maßgeblich.
-- Alte `extract_results.py` ersetzen.
+- Alte `extract_results.py` ersetzen (erledigt in Phase 8: `evaluate.py`).
 
 ## Phase 9: Unit-Tests
 
-Vorhanden: 81 Tests. Ergänzen: Verstoß-Funktionen aus Phase 8 mit den Test-Strings aus `tests/tc_fixtures.json` (`decode/fixtures.mjs`), halbautomatischer Ablauf ohne Browser (Labels, Rollen, Korrekturen), Varianten für `w`.
+Vorhanden: 124 Tests (darunter Verstoß-Funktionen, Rangfolge der Prüfungen, Auswahl der Gegenprüfung, Varianten für `w`).
 
 ## Phase 10: Testlauf
 
@@ -105,7 +110,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs), `docs/abweichungen
 
 ## Wichtige Befunde bisher
 
-- Kanal ② ist fast nie messbar (vor der Wahl nur wetteronline.de mit fremdem iframe).
+- Kanal 2 ist fast nie messbar (vor der Wahl nur wetteronline.de mit fremdem iframe).
 - amazon.de (CMP 376) liefert leeres `tcData` (`empty_tc_data`), eigener Banner mit „Ablehnen“.
 - mobile.de sperrt per Akamai Bot Manager (Status 200, leere Seite).
 - google.de: urllib verbietet wegen `Disallow: /?` → `/` (Normalisierung), Protego erlaubt.
