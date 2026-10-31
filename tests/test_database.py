@@ -1,6 +1,7 @@
 """Database (schema.sql, database.py, merge_databases.py): inserting, foreign keys, TC strings
 without duplicates and with all IDs, nothing overwritten, crosscheck and correction next to
-the first examination, an example query for V4 strict, merging two files. Needs Node."""
+the first examination, an example query for V4 strict, the evaluation reading the database
+(site_data.py), merging two files. Needs Node."""
 import json
 import shutil
 import sqlite3
@@ -11,6 +12,8 @@ import pytest
 import database
 import decoder
 import merge_databases
+import site_data
+import violations
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="needs Node for the decoder")
 
@@ -280,3 +283,31 @@ def test_old_file_is_migrated_when_opened(tmp_path):
     assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == database.SCHEMA_VERSION
     assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'screenshot'").fetchone()
     assert "cookiewall_seen" in [r["name"] for r in conn.execute("PRAGMA table_info(label)")]
+
+
+def semi_examination(conn, run_id, outcome, reject_tc, accept_tc, operator="ae", role="primary", **links):
+    """A semi-automatic examination with label and the snapshots after the reload."""
+    examination_id = database.insert_examination(conn, run_id, "example.de", "https://www.example.de", role,
+                                                 operator=operator, **links)
+    for kind, tc in (("reject", reject_tc), ("accept", accept_tc)):
+        session_id = database.insert_session(conn, examination_id, kind, "https://www.example.de")
+        database.store_capture(conn, session_id, {"before": snapshot(FIXTURES["no_consent"]),
+                                                  f"after_{kind}": snapshot(tc), f"after_{kind}_reload": snapshot(tc)},
+                               closing(FIXTURES["no_consent"], tc), CMP_LIST, "2026-10-22")
+    database.insert_label(conn, examination_id, operator, outcome, reject_level=1 if outcome == "rejected" else None)
+    database.finish_examination(conn, examination_id, "done")
+    return examination_id
+
+
+def test_evaluation_reads_the_database_and_takes_the_milder_crosscheck(conn):
+    # first examination: consent ignored (V4); blind crosscheck: consent respected -> milder, counts
+    run_id = database.insert_run(conn, METADATA)
+    first = semi_examination(conn, run_id, "rejected", FIXTURES["all_purposes"], FIXTURES["all_purposes"])
+    semi_examination(conn, run_id, "rejected", FIXTURES["no_consent"], FIXTURES["all_purposes"], operator="xy",
+                     role="crosscheck", crosscheck_of=first)
+    site = site_data.load_sites(conn, violations.severity)["example.de"]
+    assert site["crosscheck"]["differs"] is True
+    assert (site["source"], site["semi"]["operator"]) == ("crosscheck (milder)", "xy")
+    assert violations.v4(site["semi"], "strict")["value"] == violations.NO
+    assert violations.v4(site["crosscheck"]["primary"], "strict")["value"] == violations.YES
+    assert violations.v4(site["crosscheck"]["primary"], "lax")["purposes_after_reject"] == list(range(1, 12))
