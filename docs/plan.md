@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (Lauf durch die Person steht aus), Phase 11 im Entwurf. Nichts gepusht.
+Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (Lauf durch die Person steht aus), Phase 11 fertig bis auf die Zahlen im Methodenteil. Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -110,7 +110,7 @@ Vorbereitet (2026-10-31): Die Mini-CMP am Prüfstand erzeugt mit `?verstoss=v2n|
 
 ## Phase 11: Doku
 
-README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs): Entwurf liegt vor, nicht committet. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Satz für den Methodenteil: Entwurf an die Person.
+README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blinde Gegenprüfung): fertig. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Methodenteil: Entwurf in `docs/methodenteil.md`, Platzhalter für Zahlen, Zeitraum, Standort und Versionen.
 
 ## Offene Punkte außerhalb der Phasen
 
