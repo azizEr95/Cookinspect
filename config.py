@@ -24,7 +24,7 @@ WINDOW_SIZE = (1366, 768)               # as in Cookinspect (most common display
 
 # Safe environment: crawls run under their own macOS user, with a fresh browser profile per
 # session and no logins. When CRAWL_USER is set, the scripts refuse to run under any other user.
-CRAWL_USER = None                       # e.g. "crawler"; None = not checked (a warning is printed)
+CRAWL_USER = "crawler"                  # None = not checked (a warning is printed)
 # A real crawl (not --test) is also refused when the machine or the location differ:
 EXPECTED_MACHINE = "arm64"              # Apple Silicon
 EXPECTED_IP_COUNTRY = "DE"              # measurement from Germany (Berlin)
