@@ -125,7 +125,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("sites", help="tcf_sites.csv of the prefilter, or a list of domains")
     parser.add_argument("--limit", type=int, help="only the first N sites (for tests)")
-    parser.add_argument("--test", action="store_true", help="test run: data/test.sqlite, no CRAWL_USER needed")
+    parser.add_argument("--test", action="store_true", help="test run: data/test.sqlite, no crawl user needed")
     parser.add_argument("--purpose", choices=["vorab", "messung"], help="full run")
     args = parser.parse_args()
     if args.test == bool(args.purpose):

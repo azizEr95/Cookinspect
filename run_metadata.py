@@ -1,6 +1,6 @@
 """Records everything needed to reproduce a run (Demir et al.): date, location, versions,
 configuration, website list and Git commit. Written as run_metadata.json into the output
-directory of the run. Also checks the safe environment (own macOS user, fresh profile).
+directory of the run. Also checks the safe environment (allowed macOS user, fresh profile).
 
     venv/bin/python run_metadata.py     # setup check: prints the metadata of a run started now
 """
@@ -58,22 +58,21 @@ def settings_from_config():
 
 
 def check_environment(test_run):
-    """Safe environment. A real crawl (not a test run) is refused when config.CRAWL_USER is not set,
-    when it runs under another macOS user, or when the working tree has uncommitted changes
-    (then the Git commit in the metadata would not describe the code that ran). A test run may
-    run under any user, e.g. for development; the metadata record who ran it."""
+    """Safe environment. A real crawl (not a test run) is refused when the macOS user is not in
+    config.CRAWL_USERS, or when the working tree has uncommitted changes (then the Git commit in
+    the metadata would not describe the code that ran). A test run may run under any user;
+    the metadata record who ran it."""
     user = getpass.getuser()
-    right_user = config.CRAWL_USER is not None and user == config.CRAWL_USER
+    right_user = user in config.CRAWL_USERS
     if not test_run:
-        if config.CRAWL_USER is None:
-            raise SystemExit("Real crawl refused: config.CRAWL_USER is not set. For a test, add --test.")
         if not right_user:
-            raise SystemExit(f"Real crawl refused: run it as the macOS user '{config.CRAWL_USER}', not '{user}'.")
+            raise SystemExit(f"Real crawl refused: the macOS user '{user}' is not in config.CRAWL_USERS "
+                             f"{config.CRAWL_USERS}. For a test, add --test.")
         if git_commit()["dirty"]:
             raise SystemExit("Real crawl refused: uncommitted changes in the repository. Commit first, or add --test.")
     elif not right_user:
-        print(f"Warning: test run as '{user}', not as the crawl user ({config.CRAWL_USER}).")
-    return {"os_user": user, "crawl_user": config.CRAWL_USER, "run_as_crawl_user": right_user}
+        print(f"Warning: test run as '{user}', not as a crawl user {config.CRAWL_USERS}.")
+    return {"os_user": user, "crawl_users": list(config.CRAWL_USERS), "run_as_crawl_user": right_user}
 
 
 def browser_metadata():

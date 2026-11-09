@@ -214,7 +214,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("list", help="CSV with rank,domain columns, or one domain per line")
     parser.add_argument("--limit", type=int, help="only the first N domains (for tests)")
-    parser.add_argument("--test", action="store_true", help="test run: CRAWL_USER and a clean Git state are not required")
+    parser.add_argument("--test", action="store_true", help="test run: crawl user and a clean Git state are not required")
     parser.add_argument("--purpose", choices=["vorab", "messung"],
                         help="full run: 'vorab' (number of TCF sites) or 'messung' (counts in the paper)")
     args = parser.parse_args()

@@ -22,9 +22,10 @@ HEADLESS = False                        # visible window in all modes (also -a)
 ACCEPT_LANGUAGES = "de-DE,de"           # German users
 WINDOW_SIZE = (1366, 768)               # as in Cookinspect (most common display in 2019)
 
-# Safe environment: crawls run under their own macOS user, with a fresh browser profile per
-# session and no logins. When CRAWL_USER is set, the scripts refuse to run under any other user.
-CRAWL_USER = "crawler"                  # None = not checked (a warning is printed)
+# Safe environment: crawls run under the normal macOS user of each person (docs/entscheidungen.md,
+# E8), with a fresh temporary browser profile per session and no logins. A real crawl is refused
+# under any user not listed here.
+CRAWL_USERS = ("aziz",)                 # add the macOS user of the second person (whoami)
 # A real crawl (not --test) is also refused when the machine or the location differ:
 EXPECTED_MACHINE = "arm64"              # Apple Silicon
 EXPECTED_IP_COUNTRY = "DE"              # measurement from Germany (Berlin)

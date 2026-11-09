@@ -107,3 +107,13 @@ Grund: Websites wechseln CMP und TCF-Einbindung; zwischen Vorab-Lauf und Messung
 ## E7 (2026-10-29, für Phase 8 vorgemerkt): TCF-API ohne TC-String bei V1
 
 Fälle wie amazon.de (CMP 376): `__tcfapi` antwortet, der Listener liefert aber kein `tcString` (`observation.status = empty_tc_data` oder `no_tc_string`). Bei V1 werden sie **getrennt als „nicht auswertbar“** ausgewiesen, nicht als „kein Verstoß“. Gilt genauso, wenn nur einer der beiden Vorher-Snapshots einen String hat.
+
+## E8 (2026-11-09): Crawl unter dem normalen macOS-Nutzer statt unter einem eigenen Crawl-Nutzer
+
+Geplant war ein eigener macOS-Nutzer `crawler` (CLAUDE.md, „Sicheres Umfeld“). Beim Einrichten (eigenes Klonen, eigenes venv, eigenes nvm, getrennte Zwischenablage, schneller Benutzerwechsel) war der Aufwand an zwei Macs zu hoch. Deshalb laufen alle Crawls unter dem normalen Nutzer der jeweiligen Person.
+
+- Erlaubt sind nur die Nutzer in `config.CRAWL_USERS`. Ein echter Lauf unter einem anderen Nutzer bricht ab. Die übrigen Prüfungen bleiben (sauberer Git-Stand, Chrome und chromedriver in der Version aus `config.py`, `arm64`, IP-Land `DE`).
+- Weiterhin gilt: frisches temporäres Browserprofil pro Sitzung (`browser.fresh_temporary_profile` in den Metadaten), keine Browser-Erweiterungen, keine Logins im Crawl-Browser.
+- Restrisiko: Bei einer Sicherheitslücke im Browser hätte eine besuchte Seite Zugriff auf die Dateien des Nutzers. Wir nehmen das hin, weil Chrome for Testing in einer aktuellen Stable-Version läuft (`config.CHROME_VERSION`) und nur bekannte Websites aus der Tranco-Liste besucht werden.
+- Reproduzierbarkeit: Der Nutzer steht in den Metadaten jedes Laufs (`environment.os_user`). Im Methodenteil wird beschrieben, dass unter dem normalen Nutzer mit frischem Profil gemessen wurde.
+- Gegenüber Matte et al. (2020) ist das keine Abweichung (dort ist kein eigener Nutzer beschrieben), deshalb steht es nicht in `docs/abweichungen.md`.

@@ -1,4 +1,4 @@
-"""A real crawl is refused without CRAWL_USER or with uncommitted changes; a test run is not."""
+"""A real crawl is refused under a user not in CRAWL_USERS or with uncommitted changes; a test run is not."""
 import getpass
 
 import pytest
@@ -11,42 +11,42 @@ def clean(monkeypatch, dirty=False):
     monkeypatch.setattr(run_metadata, "git_commit", lambda: {"commit": "x", "branch": "b", "dirty": dirty})
 
 
-def test_real_crawl_refused_without_crawl_user(monkeypatch):
+def test_real_crawl_refused_without_crawl_users(monkeypatch):
     clean(monkeypatch)
-    monkeypatch.setattr(config, "CRAWL_USER", None)
-    with pytest.raises(SystemExit, match="CRAWL_USER"):
+    monkeypatch.setattr(config, "CRAWL_USERS", ())
+    with pytest.raises(SystemExit, match="CRAWL_USERS"):
         run_metadata.check_environment(test_run=False)
 
 
 def test_real_crawl_refused_when_dirty(monkeypatch):
     clean(monkeypatch, dirty=True)
-    monkeypatch.setattr(config, "CRAWL_USER", getpass.getuser())
+    monkeypatch.setattr(config, "CRAWL_USERS", (getpass.getuser(),))
     with pytest.raises(SystemExit, match="uncommitted"):
         run_metadata.check_environment(test_run=False)
 
 
 def test_real_crawl_allowed_when_clean_and_right_user(monkeypatch):
     clean(monkeypatch)
-    monkeypatch.setattr(config, "CRAWL_USER", getpass.getuser())
+    monkeypatch.setattr(config, "CRAWL_USERS", ("someone-else", getpass.getuser()))
     assert run_metadata.check_environment(test_run=False)["run_as_crawl_user"] is True
 
 
 def test_real_crawl_refused_under_other_user(monkeypatch):
     clean(monkeypatch)
-    monkeypatch.setattr(config, "CRAWL_USER", "someone-else")
+    monkeypatch.setattr(config, "CRAWL_USERS", ("someone-else",))
     with pytest.raises(SystemExit, match="someone-else"):
         run_metadata.check_environment(test_run=False)
 
 
 def test_test_run_under_other_user_only_warns(monkeypatch):
     clean(monkeypatch)
-    monkeypatch.setattr(config, "CRAWL_USER", "someone-else")
+    monkeypatch.setattr(config, "CRAWL_USERS", ("someone-else",))
     assert run_metadata.check_environment(test_run=True)["run_as_crawl_user"] is False
 
 
-def test_test_run_allowed_without_crawl_user_and_dirty(monkeypatch):
+def test_test_run_allowed_without_crawl_users_and_dirty(monkeypatch):
     clean(monkeypatch, dirty=True)
-    monkeypatch.setattr(config, "CRAWL_USER", None)
+    monkeypatch.setattr(config, "CRAWL_USERS", ())
     assert run_metadata.check_environment(test_run=True)["run_as_crawl_user"] is False
 
 

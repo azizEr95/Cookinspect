@@ -1,6 +1,6 @@
 # Plan und Stand der Neuimplementierung
 
-Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Einrichtung des Crawl-Nutzers in `docs/crawl-nutzer.md`.
+Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Prüfung der Crawl-Umgebung in `docs/crawl-nutzer.md`.
 
 Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (Lauf durch die Person steht aus), Phase 11 fertig bis auf die Zahlen im Methodenteil. Nichts gepusht.
 
@@ -38,7 +38,7 @@ Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–
 |---|---|
 | `config.py` | alle Einstellungen (Chrome-Version, Wartezeiten nach Matte, Pausen, erwartetes Setup, `database_path(purpose)`) |
 | `browser.py` | Chrome for Testing 156.0.8078.73 mit BiDi, frisches Profil, sichtbares Fenster |
-| `run_metadata.py` | Metadaten jedes Laufs; verweigert echte Läufe ohne `CRAWL_USER`, mit „dirty“ Git, falscher Chrome-Version, nicht `arm64`, IP-Land nicht `DE` |
+| `run_metadata.py` | Metadaten jedes Laufs; verweigert echte Läufe unter einem Nutzer außerhalb von `CRAWL_USERS`, mit „dirty“ Git, falscher Chrome-Version, nicht `arm64`, IP-Land nicht `DE` |
 | `robots.py` | robots.txt: Protego (gecrawlt), urllib und Original-Cookinspect als Vergleich; Ausweichregeln HTTPS→HTTP, ohne www; 429 wie 5xx |
 | `page.py` | Laden mit 3 Versuchen, HTTP-Status der Hauptseite, Erkennung von Sperrseiten |
 | `prefilter.py` | Vorfilter mit Trichter; `--test` oder `--purpose vorab` bzw. `--purpose messung`; schreibt Datenbank und `tcf_sites.csv` |
@@ -114,7 +114,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blin
 
 ## Offene Punkte außerhalb der Phasen
 
-- Crawl-Nutzer auf beiden Macs einrichten, `CRAWL_USER` setzen und committen (`docs/crawl-nutzer.md`). Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
+- Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`. Offen: macOS-Nutzer der zweiten Person eintragen und committen. Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
 - Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
 - Lizenz von Cookinspect mit Matte klären (keine Lizenzdatei) vor einer Veröffentlichung.
 - E4: Cookie Glasses (GPLv3) auf TCF v2.2/v2.3 erweitern, mit kurzem Nutzertest (5–10 Personen); vorgezogen auf „nach Phase 8 und Vorab-Lauf“, Details offen. Decoder ist dafür eigenständig gebaut.

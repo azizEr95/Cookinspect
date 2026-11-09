@@ -26,7 +26,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 ## Technik
 
 - Läuft nativ auf macOS (Apple Silicon, arm64), Python 3.12, Selenium 4, Chrome for Testing in fester Version (`config.py`). Keine Browser-Erweiterungen; die Daten kommen über WebDriver BiDi und Selenium.
-- Sicheres Umfeld: eigener macOS-Nutzer für die Crawls, frisches Browserprofil pro Sitzung, keine Logins.
+- Sicheres Umfeld: Crawl unter dem normalen macOS-Nutzer der Person (erlaubte Nutzer in `config.CRAWL_USERS`, `docs/entscheidungen.md` E8), frisches temporäres Browserprofil pro Sitzung, keine Logins im Crawl-Browser.
 - Sichtbares Browserfenster in allen Modi, auch beim automatischen Crawl.
 - Datenbank: SQLite mit `sqlite3` (ohne SQLAlchemy). Dekodierung mit `@iabtechlabtcf/core` (Version in `decode/package.json` festgelegt).
 - TC-Strings v1 (beginnen mit `B`) werden nur roh gespeichert und als v1 markiert. Die Version wird am String erkannt, nicht am Modus des Laufs.

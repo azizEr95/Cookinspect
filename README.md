@@ -28,11 +28,11 @@ venv/bin/python -m pytest                           # Unit-Tests (ohne Browser)
 
 Chrome for Testing und chromedriver werden von Selenium Manager in genau der Version aus `config.CHROME_VERSION` geladen (unter `~/.cache/selenium`).
 
-**Echte Läufe** (nicht `--test`) laufen nur unter einem eigenen macOS-Nutzer für die Crawls, mit sauberem Git-Stand, der festen Chrome-Version, arm64 und einer IP aus Deutschland. Sonst bricht das Werkzeug vor dem ersten Request ab. Einrichtung des Nutzers: `docs/crawl-nutzer.md`.
+**Echte Läufe** (nicht `--test`) laufen nur unter einem macOS-Nutzer aus `config.CRAWL_USERS` (der normale Nutzer jeder Person, `docs/entscheidungen.md` E8), mit sauberem Git-Stand, der festen Chrome-Version, arm64 und einer IP aus Deutschland. Sonst bricht das Werkzeug vor dem ersten Request ab. Prüfung vor dem ersten Lauf: `docs/crawl-nutzer.md`.
 
 ## Ablauf
 
-Alle Befehle laufen über `run_list.py` (oder direkt über das genannte Skript). `--test` schreibt nach `data/test.sqlite` und braucht keinen Crawl-Nutzer; `--purpose vorab` bzw. `--purpose messung` schreibt nach `data/vorab.sqlite` bzw. `data/messung.sqlite`.
+Alle Befehle laufen über `run_list.py` (oder direkt über das genannte Skript). `--test` schreibt nach `data/test.sqlite` und läuft unter jedem Nutzer; `--purpose vorab` bzw. `--purpose messung` schreibt nach `data/vorab.sqlite` bzw. `data/messung.sqlite`.
 
 | Schritt | Befehl | Ergebnis |
 |---|---|---|
@@ -53,7 +53,7 @@ Der Vorab-Lauf (`--purpose vorab`) besteht nur aus Vorfilter (Schritt 1) und aut
 
 ## Zwei Personen an zwei Macs
 
-Jede Person arbeitet an ihrem eigenen Mac mit eigenem Crawl-Nutzer und eigener Datenbank. Nichts wird überschrieben: Messdaten und Labels werden nur eingefügt, jede Prüfung trägt das Kürzel der Person.
+Jede Person arbeitet an ihrem eigenen Mac unter ihrem eigenen Nutzer (in `config.CRAWL_USERS`) und mit eigener Datenbank. Nichts wird überschrieben: Messdaten und Labels werden nur eingefügt, jede Prüfung trägt das Kürzel der Person.
 
 1. **Mac ae:** Vorfilter-Messlauf (Schritt 1) und Aufteilung (Schritt 2), nur auf diesem Mac. `tcf_sites.csv`, `site_assignment.csv` und `site_assignment.json` an xy weitergeben (AirDrop, USB-Stick); xy legt sie unter demselben Ordnernamen ab und startet **keinen** eigenen Vorfilter.
 2. **Mac ae:** automatischer Modus (Schritt 3) für **alle** Seiten, damit V1 überall unter denselben Bedingungen gemessen wird.

@@ -458,7 +458,7 @@ def main():
     parser.add_argument("--operator", required=True, help="short code of the person, e.g. ae")
     parser.add_argument("--role", choices=["primary", "crosscheck", "recheck", "correction"], default="primary")
     parser.add_argument("--limit", type=int, default=config.SEMI_AUTOMATIC_LIMIT, help="only the first N sites (tests)")
-    parser.add_argument("--test", action="store_true", help="test run: data/test.sqlite, no CRAWL_USER needed")
+    parser.add_argument("--test", action="store_true", help="test run: data/test.sqlite, no crawl user needed")
     parser.add_argument("--purpose", choices=["vorab", "messung"], help="full run")
     args = parser.parse_args()
     if args.test == bool(args.purpose):
