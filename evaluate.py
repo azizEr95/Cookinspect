@@ -154,17 +154,13 @@ def table(header, rows):
 
 
 def tab_ii(conn, purpose):
-    """Funnel of the latest prefilter run of the purpose, as in prefilter.py."""
-    run = conn.execute("SELECT id, started_at FROM run WHERE mode = 'prefilter' AND purpose = ? ORDER BY started_at DESC",
-                       (purpose,)).fetchone()
+    """Funnel of the latest finished prefilter run of the purpose, as in prefilter.py (an
+    interrupted run counts only once it is resumed and finished)."""
+    run = conn.execute("SELECT id, started_at FROM run WHERE mode = 'prefilter' AND purpose = ? "
+                       "AND finished_at IS NOT NULL ORDER BY started_at DESC", (purpose,)).fetchone()
     if run is None:
-        return None, "Kein Vorfilter-Lauf in dieser Datenbank."
-    rows = []
-    for row in conn.execute("SELECT * FROM prefilter_result WHERE run_id = ?", (run["id"],)):
-        row = dict(row)
-        flags = ("robots_allowed_urllib", "robots_allowed_cookinspect", "loaded", "blocked", "tcfapi", "tcf")
-        rows.append({**row, **{f: bool(row[f]) for f in flags}, "robots_allowed": bool(row["robots_allowed_protego"])})
-    funnel = prefilter.funnel(rows)
+        return None, "Kein abgeschlossener Vorfilter-Lauf in dieser Datenbank."
+    funnel = prefilter.funnel(list(prefilter.rows_of_run(conn, run["id"]).values()))
     return funnel, f"Vorfilter-Lauf {run['id']} vom {run['started_at']}.\n\n" + prefilter.funnel_table(funnel)
 
 

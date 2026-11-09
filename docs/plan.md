@@ -114,6 +114,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blin
 
 ## Offene Punkte außerhalb der Phasen
 
+- Fortsetzen unterbrochener Läufe (E9, 2026-11-09): `--resume <Lauf-Ordner>` für Vorfilter und automatischen Modus (`resume.py`, Tabelle `run_part`, Schema 4); Unit-Tests in `tests/test_resume.py`, echter Test mit Ctrl+C an 8 Domains und 2 TCF-Seiten ohne Fehler.
 - Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`. Offen: macOS-Nutzer der zweiten Person eintragen und committen. Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
 - Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
 - Lizenz von Cookinspect mit Matte klären (keine Lizenzdatei) vor einer Veröffentlichung.

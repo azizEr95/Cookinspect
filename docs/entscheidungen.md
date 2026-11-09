@@ -117,3 +117,14 @@ Geplant war ein eigener macOS-Nutzer `crawler` (CLAUDE.md, „Sicheres Umfeld“
 - Restrisiko: Bei einer Sicherheitslücke im Browser hätte eine besuchte Seite Zugriff auf die Dateien des Nutzers. Wir nehmen das hin, weil Chrome for Testing in einer aktuellen Stable-Version läuft (`config.CHROME_VERSION`) und nur bekannte Websites aus der Tranco-Liste besucht werden.
 - Reproduzierbarkeit: Der Nutzer steht in den Metadaten jedes Laufs (`environment.os_user`). Im Methodenteil wird beschrieben, dass unter dem normalen Nutzer mit frischem Profil gemessen wurde.
 - Gegenüber Matte et al. (2020) ist das keine Abweichung (dort ist kein eigener Nutzer beschrieben), deshalb steht es nicht in `docs/abweichungen.md`.
+
+## E9 (2026-11-09): Unterbrochene Läufe fortsetzen (Vorfilter und automatischer Modus)
+
+Vorfilter und automatischer Modus laufen mehrere Stunden. Nach Ctrl+C (oder einem Absturz) lassen sie sich mit `--resume <Lauf-Ordner>` fortsetzen (`resume.py`).
+
+- Es geht **derselbe Lauf** weiter (gleiche Lauf-ID, gleicher Ordner). Liste, Zweck und `--limit` kommen aus `run_metadata.json` des Laufs.
+- Vorfilter: Domains, die für den Lauf schon in `prefilter_result` stehen, werden übersprungen. `tcf_sites.csv` und der Trichter entstehen erst am Ende, aus allen Zeilen des Laufs. Die Auswertung (Tab. II) nimmt nur abgeschlossene Vorfilter-Läufe.
+- Automatischer Modus: Seiten mit abgeschlossener Prüfung werden übersprungen. Eine Seite, die beim Abbruch lief, bleibt als Prüfung ohne Status in der Datenbank (Löschen ist gesperrt) und wird vollständig neu gemessen, mit beiden Sitzungen. Die Auswertung nimmt ohnehin nur Prüfungen mit `status = 'done'`.
+- Fortsetzen wird bei echten Läufen verweigert, wenn Git-Commit, Chrome, chromedriver oder Konfiguration vom Start des Laufs abweichen; die Metadaten des Laufs sollen für alle Teile gelten. Die übrigen Prüfungen jedes Laufs (Nutzer, sauberer Git-Stand, Architektur, IP-Land) gelten auch hier. Während ein Lauf unterbrochen ist, also nichts committen.
+- Jedes Fortsetzen steht mit seinen Metadaten (Zeit, IP-Land, GVL- und CMP-Liste) in der Tabelle `run_part` (Schema-Version 4) und unter `parts` in `run_metadata.json`. Der automatische Modus nutzt nach dem Fortsetzen die CMP-Liste dieses Teils.
+- Gegenüber Matte et al. (2020) keine Abweichung in der Messung; die Teile eines Laufs liegen nur zeitlich auseinander. Im Methodenteil nennen, falls ein Lauf unterbrochen wurde (Zeitspanne aus `run_part`).

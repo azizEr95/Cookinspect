@@ -22,7 +22,7 @@ import decoder
 from capture import registrable_domain
 
 SCHEMA_PATH = config.REPO_DIR / "schema.sql"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 # Older files are brought up to date when opened; a migration only adds tables or columns.
 MIGRATIONS_DIR = config.REPO_DIR / "migrations"   # <version>.sql: from version - 1 to version
 
@@ -119,6 +119,23 @@ def insert_run(conn, metadata, operator=None):
 def finish_run(conn, run_id):
     with conn:
         conn.execute("UPDATE run SET finished_at = ? WHERE id = ?", (now(), run_id))
+
+
+def insert_run_part(conn, run_id, metadata):
+    """A resumption of an interrupted run, with the metadata at that time (E9)."""
+    with conn:
+        insert(conn, "run_part", {"id": new_id(), "run_id": run_id, "started_at": metadata["started_at"],
+                                  "metadata_json": json.dumps(metadata, ensure_ascii=False)})
+
+
+def unfinished_run(conn, run_id):
+    """The run, if it exists and is not finished yet; otherwise a reason why it cannot be resumed."""
+    run = conn.execute("SELECT * FROM run WHERE id = ?", (run_id,)).fetchone()
+    if run is None:
+        return None, f"run {run_id} is not in this database"
+    if run["finished_at"]:
+        return None, f"run {run_id} is already finished ({run['finished_at']})"
+    return run, None
 
 
 def ensure_website(conn, domain, tranco_rank=None, tranco_list_id=None):

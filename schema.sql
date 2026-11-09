@@ -12,7 +12,7 @@
 CREATE TABLE schema_info (
     version         INTEGER NOT NULL
 );
-INSERT INTO schema_info (version) VALUES (3);   -- see database.MIGRATIONS
+INSERT INTO schema_info (version) VALUES (4);   -- see database.MIGRATIONS
 
 -- One run of prefilter.py, of the automatic or of the semi-automatic mode.
 CREATE TABLE run (
@@ -286,6 +286,18 @@ CREATE TABLE screenshot (
     taken_at        TEXT NOT NULL
 );
 CREATE TRIGGER screenshot_no_delete BEFORE DELETE ON screenshot BEGIN SELECT RAISE(ABORT, 'screenshot: rows are never deleted'); END;
+
+-- Resumed runs (prefilter.py and automatic.py with --resume, docs/entscheidungen.md E9): one row
+-- per resumption, with the metadata at that time (IP country, consent lists, ...). The run itself
+-- keeps the metadata of its start.
+CREATE TABLE run_part (
+    id              TEXT PRIMARY KEY,
+    run_id          TEXT NOT NULL REFERENCES run(id),
+    started_at      TEXT NOT NULL,
+    metadata_json   TEXT NOT NULL
+);
+CREATE TRIGGER run_part_no_update BEFORE UPDATE ON run_part BEGIN SELECT RAISE(ABORT, 'run_part: rows are never changed'); END;
+CREATE TRIGGER run_part_no_delete BEFORE DELETE ON run_part BEGIN SELECT RAISE(ABORT, 'run_part: rows are never deleted'); END;
 
 CREATE INDEX idx_examination_domain ON examination(domain);
 CREATE INDEX idx_session_examination ON session(examination_id);

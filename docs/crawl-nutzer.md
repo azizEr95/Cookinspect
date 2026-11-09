@@ -47,6 +47,8 @@ Damit der Mac während des Laufs nicht einschläft, den Aufruf in `caffeinate` p
 caffeinate -dims venv/bin/python run_list.py prefilter lists/tranco_GQ3LK_de_top1000.csv --purpose vorab
 ```
 
+Unterbrechen mit Ctrl+C ist jederzeit möglich. Das Werkzeug zeigt dann den Befehl zum Fortsetzen, z. B. `caffeinate -dims venv/bin/python run_list.py prefilter --resume data/prefilter-vorab-<Zeit>`; dazwischen nichts am Repo committen (E9).
+
 Später entsprechend `--purpose messung` (docs/entscheidungen.md, E3). Ein echter Lauf bricht vor dem ersten Request ab, wenn eines nicht stimmt: Nutzer, sauberer Git-Stand, Chrome und chromedriver in der Version aus `config.py`, Architektur `arm64`, IP-Land `DE`.
 
 ### Datenbanken: eine Datei pro Zweck

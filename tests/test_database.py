@@ -278,13 +278,14 @@ def test_old_file_is_migrated_when_opened(tmp_path):
     path = tmp_path / "old.sqlite"
     conn = sqlite3.connect(path)
     conn.executescript(database.SCHEMA_PATH.read_text().split("-- Screenshots of the banner")[0]
-                       .replace("VALUES (3);", "VALUES (1);")
+                       .replace("VALUES (4);", "VALUES (1);")
                        .replace("    cookiewall_seen             INTEGER,", "    -- (added in version 3)"))
     conn.close()
     conn = database.connect(str(path))
     assert conn.execute("SELECT version FROM schema_info").fetchone()[0] == database.SCHEMA_VERSION
     assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'screenshot'").fetchone()
     assert "cookiewall_seen" in [r["name"] for r in conn.execute("PRAGMA table_info(label)")]
+    assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'run_part'").fetchone()
 
 
 def semi_examination(conn, run_id, outcome, reject_tc, accept_tc, operator="ae", role="primary", **links):
@@ -332,4 +333,4 @@ def test_evaluation_writes_csv_and_json(conn, tmp_path, monkeypatch):
     assert tables["tab_iii"]["v4"]["hits"] == 1 and tables["tab_iii"]["v4"]["denominator"] == 1
     assert tables["sites"]["example.de"]["v4_strict"]["value"] == "ja"
     assert (tmp_path / "tables.md").read_text().strip() == markdown.strip()
-    assert "Kein Vorfilter-Lauf" in markdown
+    assert "Kein abgeschlossener Vorfilter-Lauf" in markdown

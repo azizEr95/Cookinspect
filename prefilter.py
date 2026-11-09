@@ -22,6 +22,7 @@ counted and reported.
     venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --limit 10 --test
     venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose vorab
     venv/bin/python prefilter.py lists/tranco_GQ3LK_de_top1000.csv --purpose messung
+    venv/bin/python prefilter.py --resume data/prefilter-vorab-<timestamp>    # after Ctrl+C (resume.py)
 
 Two full runs are planned (docs/entscheidungen.md, E3): "vorab" now, for the number of TCF
 sites, and "messung" right before the measurement; only the second one counts in the paper and
@@ -38,6 +39,7 @@ import csv
 import json
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from selenium.common.exceptions import WebDriverException
 
@@ -45,6 +47,7 @@ import config
 import database
 from browser import start_chrome
 from page import detect_block, load_page, read_ranked_domains, watch_main_document
+from resume import print_interrupted, resume_run
 from robots import decisions, find_robots
 from run_list import list_info
 from run_metadata import new_metadata, write_metadata
@@ -210,58 +213,97 @@ def funnel_table(result):
     return "\n".join(lines)
 
 
+def rows_of_run(conn, run_id):
+    """{domain: row} of a prefilter run from the database, with the field names of check_domain
+    (used for the funnel at the end of a run, also of a resumed one, and by evaluate.py)."""
+    rows = {}
+    for row in conn.execute("SELECT * FROM prefilter_result WHERE run_id = ?", (run_id,)):
+        row = dict(row)
+        flags = ("robots_allowed_urllib", "robots_allowed_cookinspect", "loaded", "blocked", "tcfapi", "tcf")
+        rows[row["domain"]] = {**row, **{f: bool(row[f]) for f in flags}, "robots_allowed": bool(row["robots_allowed_protego"])}
+    return rows
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("list", help="CSV with rank,domain columns, or one domain per line")
+    parser.add_argument("list", nargs="?", help="CSV with rank,domain columns, or one domain per line")
     parser.add_argument("--limit", type=int, help="only the first N domains (for tests)")
     parser.add_argument("--test", action="store_true", help="test run: crawl user and a clean Git state are not required")
     parser.add_argument("--purpose", choices=["vorab", "messung"],
                         help="full run: 'vorab' (number of TCF sites) or 'messung' (counts in the paper)")
+    parser.add_argument("--resume", metavar="RUN_DIR",
+                        help="resume an interrupted run (list, purpose and limit come from the run, resume.py)")
     args = parser.parse_args()
-    if args.test == bool(args.purpose):
-        parser.error("give either --test or --purpose vorab|messung")
-    purpose = args.purpose or "test"
 
-    domains = read_ranked_domains(args.list)
-    if args.limit is not None:
-        domains = domains[:args.limit]
-    metadata = new_metadata("prefilter", args.test, purpose=purpose, website_list={
-        "path": str(args.list), "info": list_info(args.list), "domains": len(domains), "limit": args.limit})
-    run_dir = config.DATA_DIR / f"prefilter-{purpose}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
-    run_dir.mkdir(parents=True)
-    write_metadata(metadata, run_dir)
-    conn = database.connect(config.database_path(purpose))
-    run_id = database.insert_run(conn, metadata)
-    tranco_list_id = (list_info(args.list) or {}).get("tranco_list_id")
+    if args.resume:
+        if args.list or args.limit or args.test or args.purpose:
+            parser.error("--resume takes no list, --limit, --test or --purpose (they come from the run)")
+        run_dir = Path(args.resume)
+        metadata, conn, run_id = resume_run("prefilter", run_dir)
+        purpose, list_path, limit = metadata["purpose"], metadata["website_list"]["path"], metadata["website_list"]["limit"]
+    else:
+        if not args.list:
+            parser.error("give the list of domains, or --resume RUN_DIR")
+        if args.test == bool(args.purpose):
+            parser.error("give either --test or --purpose vorab|messung")
+        purpose, list_path, limit = args.purpose or "test", args.list, args.limit
+
+    domains = read_ranked_domains(list_path)
+    if limit is not None:
+        domains = domains[:limit]
+    if not args.resume:
+        metadata = new_metadata("prefilter", args.test, purpose=purpose, website_list={
+            "path": str(list_path), "info": list_info(list_path), "domains": len(domains), "limit": limit})
+        run_dir = config.DATA_DIR / f"prefilter-{purpose}-{datetime.now():%Y-%m-%d--%H-%M-%S}"
+        run_dir.mkdir(parents=True)
+        conn = database.connect(config.database_path(purpose))
+        run_id = database.insert_run(conn, metadata)
+        metadata["run_id"] = run_id   # needed for --resume
+        write_metadata(metadata, run_dir)
+    tranco_list_id = (list_info(list_path) or {}).get("tranco_list_id")
     print(f"Run directory: {run_dir}\nDatabase: {config.database_path(purpose)} (run {run_id})")
 
-    rows = []
-    with open(run_dir / "prefilter.csv", "w", newline="") as f:
+    done = set(rows_of_run(conn, run_id))
+    if done:
+        print(f"{len(done)} of {len(domains)} domains already checked in this run (skipped).")
+    csv_exists = (run_dir / "prefilter.csv").exists()
+    with open(run_dir / "prefilter.csv", "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
-        writer.writeheader()
-        for number, (rank, domain) in enumerate(domains, start=1):
-            row = check_domain(rank, domain)
-            rows.append(row)
-            database.insert_prefilter_result(conn, run_id, row, tranco_list_id)
-            writer.writerow(row)
-            f.flush()
-            print(f"[{number}/{len(domains)}] {domain}: robots {row['robots_status']} "
-                  f"(Protego {row['robots_allowed']}, urllib {row['robots_allowed_urllib']}, "
-                  f"Cookinspect {row['robots_allowed_cookinspect']}), loaded {row['loaded']}, "
-                  f"blocked {row.get('blocked')}, TCF {row.get('tcf')} (CMP {row.get('cmp_id')})")
-            time.sleep(config.PAUSE_BETWEEN_DOMAINS)
+        if not csv_exists:
+            writer.writeheader()
+        try:
+            for number, (rank, domain) in enumerate(domains, start=1):
+                if domain in done:
+                    continue
+                row = check_domain(rank, domain)
+                database.insert_prefilter_result(conn, run_id, row, tranco_list_id)
+                done.add(domain)
+                writer.writerow(row)
+                f.flush()
+                print(f"[{number}/{len(domains)}] {domain}: robots {row['robots_status']} "
+                      f"(Protego {row['robots_allowed']}, urllib {row['robots_allowed_urllib']}, "
+                      f"Cookinspect {row['robots_allowed_cookinspect']}), loaded {row['loaded']}, "
+                      f"blocked {row.get('blocked')}, TCF {row.get('tcf')} (CMP {row.get('cmp_id')})")
+                time.sleep(config.PAUSE_BETWEEN_DOMAINS)
+        except KeyboardInterrupt:
+            print_interrupted("prefilter", run_dir, len(done), len(domains))
+            raise SystemExit(130)
 
+    # all rows of the run, also those of earlier parts, in the order of the list
+    stored = rows_of_run(conn, run_id)
+    rows = [stored[domain] for _, domain in domains if domain in stored]
     with open(run_dir / "tcf_sites.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["rank", "domain", "url", "cmp_id"])
-        for row in rows:
-            if row["robots_allowed"] and row["loaded"] and row.get("tcf"):
-                writer.writerow([row["rank"], row["domain"], row["main_page_url"], row.get("cmp_id")])
+        for rank, domain in domains:
+            row = stored.get(domain)
+            if row and row["robots_allowed"] and row["loaded"] and row["tcf"]:
+                writer.writerow([rank, domain, row["main_page_url"], row["cmp_id"]])
 
     # list information next to tcf_sites.csv, so that the automatic and semi-automatic runs that
     # read it record the Tranco list ID as well (run_list.list_info)
     (run_dir / "tcf_sites.json").write_text(json.dumps(
-        {**(list_info(args.list) or {}), "prefilter_run_id": run_id, "prefilter_purpose": purpose}, indent=2))
+        {**(list_info(list_path) or {}), "prefilter_run_id": run_id, "prefilter_purpose": purpose}, indent=2))
 
     result = funnel(rows)
     metadata["finished_at"] = datetime.now(timezone.utc).isoformat()

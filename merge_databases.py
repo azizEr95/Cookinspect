@@ -15,7 +15,7 @@ import sys
 from database import connect
 
 # parents before children, so that the foreign keys hold
-TABLES = ["run", "website", "prefilter_result", "examination", "label", "session", "screenshot", "tc_string",
+TABLES = ["run", "run_part", "website", "prefilter_result", "examination", "label", "session", "screenshot", "tc_string",
           "tc_string_entry", "tc_publisher_restriction", "tcf_event", "snapshot", "observation", "request",
           "request_signal"]
 

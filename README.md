@@ -47,7 +47,7 @@ Alle Befehle laufen über `run_list.py` (oder direkt über das genannte Skript).
 | 9. Neuprüfung der betroffenen CMPs | `venv/bin/python run_list.py semi-automatic <…>/recheck.csv --operator ae --role recheck --purpose messung` | |
 | 10. Auswertung | `venv/bin/python run_list.py evaluate --purpose messung` | `data/evaluation-messung-<Zeit>/`: `tables.md` (Tab. II, Tab. III mit Zuordnung zu Matte, Details), `sites.csv`, `tables.json` |
 
-Lange Läufe in `caffeinate -dims …` packen, damit der Mac nicht einschläft. Jeder Lauf schreibt seine Metadaten (Versionen, Wartezeiten, Konfiguration, Git-Commit, IP-Land, GVL- und CMP-Liste) nach `run_metadata.json` im Lauf-Ordner und in die Tabelle `run`.
+Lange Läufe in `caffeinate -dims …` packen, damit der Mac nicht einschläft. Vorfilter und automatischer Modus lassen sich mit Ctrl+C unterbrechen und mit `run_list.py prefilter --resume <Lauf-Ordner>` bzw. `run_list.py automatic --resume <Lauf-Ordner>` fortsetzen (der Befehl wird beim Abbruch angezeigt; dazwischen nichts committen, `docs/entscheidungen.md` E9). Der halbautomatische Modus überspringt beim nächsten Start ohnehin die fertigen Seiten. Jeder Lauf schreibt seine Metadaten (Versionen, Wartezeiten, Konfiguration, Git-Commit, IP-Land, GVL- und CMP-Liste) nach `run_metadata.json` im Lauf-Ordner und in die Tabelle `run`.
 
 Der Vorab-Lauf (`--purpose vorab`) besteht nur aus Vorfilter (Schritt 1) und automatischem Modus (Schritt 3): ohne Klicken, ohne halbautomatischen Modus und ohne Gegenprüfung (`docs/entscheidungen.md`, E3).
 

@@ -13,6 +13,7 @@ decided in Phase 8: only if both snapshots "before" show it.
 
     venv/bin/python automatic.py data/prefilter-messung-<time>/tcf_sites.csv --purpose messung
     venv/bin/python automatic.py lists/tranco_GQ3LK_de_top1000.csv --limit 10 --test
+    venv/bin/python automatic.py --resume data/automatic-messung-<time>    # after Ctrl+C (resume.py)
 """
 import argparse
 import csv
@@ -26,6 +27,7 @@ from browser import start_chrome
 from capture import Capture, registrable_domain
 from cookiewall import detect_cookiewall, dialog_texts
 from page import detect_block, load_page, watch_main_document
+from resume import print_interrupted, resume_run
 from robots import check_robots
 from run_list import list_info
 from run_metadata import new_metadata, write_metadata
@@ -121,34 +123,67 @@ def print_summary(conn, domain, examination_id):
               f" TC strings to third parties {row['third_party_tc_strings']}")
 
 
+def finished_domains(conn, run_id):
+    """Sites of the run whose examination is finished (with status); an examination interrupted
+    halfway has no status and is repeated when the run is resumed."""
+    return {row[0] for row in conn.execute(
+        "SELECT domain FROM examination WHERE run_id = ? AND status IS NOT NULL", (run_id,))}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("sites", help="tcf_sites.csv of the prefilter, or a list of domains")
+    parser.add_argument("sites", nargs="?", help="tcf_sites.csv of the prefilter, or a list of domains")
     parser.add_argument("--limit", type=int, help="only the first N sites (for tests)")
     parser.add_argument("--test", action="store_true", help="test run: data/test.sqlite, no crawl user needed")
     parser.add_argument("--purpose", choices=["vorab", "messung"], help="full run")
+    parser.add_argument("--resume", metavar="RUN_DIR",
+                        help="resume an interrupted run (list, purpose and limit come from the run, resume.py)")
     args = parser.parse_args()
-    if args.test == bool(args.purpose):
-        parser.error("give either --test or --purpose vorab|messung")
-    purpose = args.purpose or "test"
 
-    sites = read_sites(args.sites)[:args.limit] if args.limit else read_sites(args.sites)
-    metadata = new_metadata("automatic", args.test, purpose=purpose, website_list={
-        "path": str(args.sites), "info": list_info(args.sites), "domains": len(sites), "limit": args.limit},
-        sessions_per_site=SESSIONS_PER_SITE)
-    cmp_list_meta = metadata["consent_lists"]["cmp_list"]
+    if args.resume:
+        if args.sites or args.limit or args.test or args.purpose:
+            parser.error("--resume takes no list, --limit, --test or --purpose (they come from the run)")
+        run_dir = Path(args.resume)
+        metadata, conn, run_id = resume_run("automatic", run_dir, sessions_per_site=SESSIONS_PER_SITE)
+        purpose, sites_path, limit = metadata["purpose"], metadata["website_list"]["path"], metadata["website_list"]["limit"]
+        # the CMP list of the current part (the latest one is fetched for every part)
+        cmp_list_meta = metadata["parts"][-1]["consent_lists"]["cmp_list"]
+    else:
+        if not args.sites:
+            parser.error("give the list of sites, or --resume RUN_DIR")
+        if args.test == bool(args.purpose):
+            parser.error("give either --test or --purpose vorab|messung")
+        purpose, sites_path, limit = args.purpose or "test", args.sites, args.limit
+
+    sites = read_sites(sites_path)[:limit] if limit else read_sites(sites_path)
+    if not args.resume:
+        metadata = new_metadata("automatic", args.test, purpose=purpose, website_list={
+            "path": str(sites_path), "info": list_info(sites_path), "domains": len(sites), "limit": limit},
+            sessions_per_site=SESSIONS_PER_SITE)
+        cmp_list_meta = metadata["consent_lists"]["cmp_list"]
+        run_dir = config.DATA_DIR / f"automatic-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
+        run_dir.mkdir(parents=True)
+        conn = database.connect(config.database_path(purpose))
+        run_id = database.insert_run(conn, metadata)
+        metadata["run_id"] = run_id   # needed for --resume
+        write_metadata(metadata, run_dir)
     cmp_list = json.loads(Path(cmp_list_meta["path"]).read_text())
-    run_dir = config.DATA_DIR / f"automatic-{purpose}-{time.strftime('%Y-%m-%d--%H-%M-%S')}"
-    run_dir.mkdir(parents=True)
-    write_metadata(metadata, run_dir)
-    conn = database.connect(config.database_path(purpose))
-    run_id = database.insert_run(conn, metadata)
     print(f"Run directory: {run_dir}\nDatabase: {config.database_path(purpose)} (run {run_id})")
 
-    for number, site in enumerate(sites, start=1):
-        print(f"[{number}/{len(sites)}] {site['domain']}")
-        examination_id = examine_site(conn, run_id, site, cmp_list, cmp_list_meta["lastUpdated"])
-        print_summary(conn, site["domain"], examination_id)
+    done = finished_domains(conn, run_id)
+    if done:
+        print(f"{len(done)} of {len(sites)} sites already examined in this run (skipped).")
+    try:
+        for number, site in enumerate(sites, start=1):
+            if site["domain"] in done:
+                continue
+            print(f"[{number}/{len(sites)}] {site['domain']}")
+            examination_id = examine_site(conn, run_id, site, cmp_list, cmp_list_meta["lastUpdated"])
+            done.add(site["domain"])
+            print_summary(conn, site["domain"], examination_id)
+    except KeyboardInterrupt:
+        print_interrupted("automatic", run_dir, len(done), len(sites))
+        raise SystemExit(130)
     database.finish_run(conn, run_id)
 
 
