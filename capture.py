@@ -33,6 +33,7 @@ from urllib.parse import parse_qsl, urlparse
 import tldextract
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
 
 import config
 
@@ -411,13 +412,20 @@ class Capture:
     # --- channel 2
 
     def third_party_iframes(self):
-        """iframe elements of the top document from another registrable domain."""
+        """iframe elements of the top document from another registrable domain. chromedriver
+        sometimes returns an empty dict instead of an element (seen on skyscanner.de), and an
+        iframe can disappear while it is read; such iframes are skipped."""
         self.driver.switch_to.default_content()
         frames = []
         for element in self.driver.find_elements(By.TAG_NAME, "iframe"):
-            src = element.get_attribute("src") or ""
-            if src.startswith("http") and registrable_domain(src) != self.site_domain \
-                    and element.get_attribute("name") != "__tcfapiLocator":
+            if not isinstance(element, WebElement):
+                continue
+            try:
+                src = element.get_attribute("src") or ""
+                name = element.get_attribute("name")
+            except WebDriverException:
+                continue
+            if src.startswith("http") and registrable_domain(src) != self.site_domain and name != "__tcfapiLocator":
                 frames.append((element, src))
         return frames
 

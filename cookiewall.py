@@ -13,6 +13,7 @@ import re
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
 
 CONSENT_MARKERS = ("akzeptieren", "zustimmen", "einverstanden", "alle annehmen", "accept")
 PAY_MARKERS = ("pur-abo", "pur abo", "pur-abonnement", "pur abonnement", "werbefrei", "ohne werbung",
@@ -48,6 +49,8 @@ def dialog_texts(driver):
     driver.switch_to.default_content()
     texts = [driver.execute_script(DIALOG_TEXT_SCRIPT) or ""]
     for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+        if not isinstance(frame, WebElement):   # chromedriver sometimes returns {} (skyscanner.de)
+            continue
         try:
             description = " ".join(filter(None, (frame.get_attribute(a) for a in ("id", "title", "src", "name"))))
             if not CMP_IFRAME_PATTERN.search(description) or not frame.is_displayed():

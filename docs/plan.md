@@ -114,6 +114,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blin
 
 ## Offene Punkte außerhalb der Phasen
 
+- Vorab-Lauf 2026-11-09: Vorfilter fertig (1000 → 890 geladen → 250 TCF, `data/prefilter-vorab-2026-11-09--08-54-51`). Automatischer Modus brach bei Seite 92 (skyscanner.de) ab: chromedriver lieferte für ein iframe `{}` statt eines Elements. Korrigiert in `capture.py` und `cookiewall.py`; ein unerwarteter Fehler beendet seither nur die Seite (`aborted`, Fehler in `note`), nicht den Lauf. Seiten 1–91 stammen aus dem Lauf mit Commit 00e058e, Seiten 92–250 aus einem neuen Lauf mit der Korrektur (Liste `data/prefilter-vorab-2026-11-09--08-54-51/tcf_sites_ab_92.csv`).
 - Fortsetzen unterbrochener Läufe (E9, 2026-11-09): `--resume <Lauf-Ordner>` für Vorfilter und automatischen Modus (`resume.py`, Tabelle `run_part`, Schema 4); Unit-Tests in `tests/test_resume.py`, echter Test mit Ctrl+C an 8 Domains und 2 TCF-Seiten ohne Fehler.
 - Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`. Offen: macOS-Nutzer der zweiten Person eintragen und committen. Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
 - Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.

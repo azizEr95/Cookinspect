@@ -38,3 +38,84 @@ def test_read_sites(tmp_path):
     plain = tmp_path / "list.txt"
     plain.write_text("bild.de\n")
     assert read_sites(plain) == [{"rank": None, "domain": "bild.de", "url": "https://www.bild.de"}]
+
+
+# --- robustness: a broken iframe or an unexpected error ends only one site (skyscanner.de, 2026-11-09)
+
+import pytest  # noqa: E402
+from selenium.common.exceptions import StaleElementReferenceException  # noqa: E402
+from selenium.webdriver.remote.webelement import WebElement  # noqa: E402
+
+import automatic  # noqa: E402
+import database  # noqa: E402
+from capture import Capture  # noqa: E402
+
+
+class FakeFrame(WebElement):
+    def __init__(self, attributes=None, stale=False):
+        super().__init__(parent=None, id_="frame")
+        self.attributes, self.stale = attributes or {}, stale
+
+    def get_attribute(self, name):
+        if self.stale:
+            raise StaleElementReferenceException("gone")
+        return self.attributes.get(name)
+
+
+class FakeDriver:
+    def __init__(self, elements):
+        self.elements = elements
+        self.switch_to = type("SwitchTo", (), {"default_content": lambda self: None})()
+
+    def find_elements(self, by, value):
+        return self.elements
+
+
+def test_iframes_that_are_no_elements_or_gone_are_skipped():
+    ad = FakeFrame({"src": "https://ads.example.com/frame"})
+    capture = Capture.__new__(Capture)   # without browser
+    capture.site_domain = "skyscanner.de"
+    capture.driver = FakeDriver([{}, FakeFrame(stale=True), FakeFrame({"src": "https://www.skyscanner.de/x"}), ad])
+    assert capture.third_party_iframes() == [(ad, "https://ads.example.com/frame")]
+
+
+@pytest.fixture
+def conn():
+    connection = database.connect(":memory:")
+    run_id = database.insert_run(connection, {
+        "mode": "automatic", "test_run": True, "started_at": database.now(), "git": {"commit": "x", "dirty": False},
+        "browser": {"browser_version": "156"}, "decoder": {"version": "1"}})
+    return connection, run_id
+
+
+def test_unexpected_error_aborts_only_the_site(conn, monkeypatch):
+    connection, run_id = conn
+    monkeypatch.setattr(automatic, "check_robots", lambda url: {"robots_allowed": True})
+
+    def broken_session(*args):
+        raise AttributeError("'dict' object has no attribute 'get_attribute'")
+
+    monkeypatch.setattr(automatic, "run_session", broken_session)
+    site = {"rank": "92", "domain": "skyscanner.de", "url": "https://www.skyscanner.de"}
+    examination_id = automatic.examine_site(connection, run_id, site, {}, None)
+    status, note = connection.execute("SELECT status, note FROM examination WHERE id = ?", (examination_id,)).fetchone()
+    assert status == "aborted" and "AttributeError" in note
+
+
+def test_ctrl_c_still_stops_the_run(conn, monkeypatch):
+    connection, run_id = conn
+    monkeypatch.setattr(automatic, "check_robots", lambda url: {"robots_allowed": True})
+
+    def interrupted_session(*args):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(automatic, "run_session", interrupted_session)
+    with pytest.raises(KeyboardInterrupt):
+        automatic.examine_site(connection, run_id, {"rank": "1", "domain": "a.de", "url": "https://www.a.de"}, {}, None)
+
+
+def test_cookiewall_texts_skip_iframes_that_are_no_elements():
+    from cookiewall import dialog_texts
+    driver = FakeDriver([{}])
+    driver.execute_script = lambda script: "Akzeptieren"
+    assert dialog_texts(driver) == ["Akzeptieren"]

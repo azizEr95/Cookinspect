@@ -87,9 +87,15 @@ def examine_site(conn, run_id, site, cmp_list, cmp_list_last_updated):
         database.finish_examination(conn, examination_id, "robots_disallowed")
         return examination_id
     sessions = []
-    for number in range(1, SESSIONS_PER_SITE + 1):
-        sessions.append(run_session(conn, examination_id, number, site["url"], cmp_list, cmp_list_last_updated))
-        time.sleep(config.PAUSE_BETWEEN_DOMAINS)
+    try:
+        for number in range(1, SESSIONS_PER_SITE + 1):
+            sessions.append(run_session(conn, examination_id, number, site["url"], cmp_list, cmp_list_last_updated))
+            time.sleep(config.PAUSE_BETWEEN_DOMAINS)
+    except Exception as error:   # an unexpected error ends only this site, not the run (Ctrl+C still does)
+        note = f"{type(error).__name__}: {error}"[:500]
+        database.finish_examination(conn, examination_id, "aborted", note=note)
+        print(f"  error, site aborted: {note}")
+        return examination_id
     suspected = [f"session {n}: {s['cookiewall_reason']}" for n, s in enumerate(sessions, 1) if s.get("cookiewall_suspected")]
     status = "done" if any(s.get("loaded") for s in sessions) else "unreachable"
     database.finish_examination(conn, examination_id, status, cookiewall_suspected=bool(suspected),
@@ -185,6 +191,12 @@ def main():
         print_interrupted("automatic", run_dir, len(done), len(sites))
         raise SystemExit(130)
     database.finish_run(conn, run_id)
+    aborted = conn.execute("SELECT domain, note FROM examination WHERE run_id = ? AND status = 'aborted'",
+                           (run_id,)).fetchall()
+    if aborted:
+        print(f"\n{len(aborted)} sites aborted after an error (not evaluated):")
+        for row in aborted:
+            print(f"  {row['domain']}: {row['note']}")
 
 
 if __name__ == "__main__":
