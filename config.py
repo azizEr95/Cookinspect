@@ -6,7 +6,8 @@ REPO_DIR = Path(__file__).resolve().parent
 DATA_DIR = REPO_DIR / "data"            # crawl results, downloaded GVL and CMP list (not committed)
 DECODE_DIR = REPO_DIR / "decode"        # Node project with @iabtechlabtcf/core (version pinned there)
 # Database: one file per purpose (test, vorab, messung), so that test runs never end up in the
-# measurement data; one set of files per person and Mac, merged with merge_databases.py.
+# measurement data. Both persons work on one Mac with the same files (docs/entscheidungen.md, E10);
+# merge_databases.py only if the measurement is spread over two Macs after all.
 PURPOSES = ("test", "vorab", "messung")
 
 
@@ -22,10 +23,11 @@ HEADLESS = False                        # visible window in all modes (also -a)
 ACCEPT_LANGUAGES = "de-DE,de"           # German users
 WINDOW_SIZE = (1366, 768)               # as in Cookinspect (most common display in 2019)
 
-# Safe environment: crawls run under the normal macOS user of each person (docs/entscheidungen.md,
-# E8), with a fresh temporary browser profile per session and no logins. A real crawl is refused
-# under any user not listed here.
-CRAWL_USERS = ("aziz",)                 # add the macOS user of the second person (whoami)
+# Safe environment: crawls run under the normal macOS user of the one Mac both persons use
+# (docs/entscheidungen.md, E8 and E10; the persons differ only by --operator), with a fresh
+# temporary browser profile per session and no logins. A real crawl is refused under any user
+# not listed here.
+CRAWL_USERS = ("aziz",)
 # A real crawl (not --test) is also refused when the machine or the location differ:
 EXPECTED_MACHINE = "arm64"              # Apple Silicon
 EXPECTED_IP_COUNTRY = "DE"              # measurement from Germany (Berlin)

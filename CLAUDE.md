@@ -26,7 +26,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 ## Technik
 
 - Läuft nativ auf macOS (Apple Silicon, arm64), Python 3.12, Selenium 4, Chrome for Testing in fester Version (`config.py`). Keine Browser-Erweiterungen; die Daten kommen über WebDriver BiDi und Selenium.
-- Sicheres Umfeld: Crawl unter dem normalen macOS-Nutzer der Person (erlaubte Nutzer in `config.CRAWL_USERS`, `docs/entscheidungen.md` E8), frisches temporäres Browserprofil pro Sitzung, keine Logins im Crawl-Browser.
+- Sicheres Umfeld: Beide Personen crawlen am selben Mac unter dessen normalem macOS-Nutzer und unterscheiden sich nur über das Kürzel (`--operator`); erlaubte Nutzer in `config.CRAWL_USERS`, `docs/entscheidungen.md` E8 und E10. Dazu frisches temporäres Browserprofil pro Sitzung, keine Logins im Crawl-Browser.
 - Sichtbares Browserfenster in allen Modi, auch beim automatischen Crawl.
 - Datenbank: SQLite mit `sqlite3` (ohne SQLAlchemy). Dekodierung mit `@iabtechlabtcf/core` (Version in `decode/package.json` festgelegt).
 - TC-Strings v1 (beginnen mit `B`) werden nur roh gespeichert und als v1 markiert. Die Version wird am String erkannt, nicht am Modus des Laufs.
@@ -85,6 +85,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 ## Gegenprüfung (Matte, Abschnitt V-C)
 
 - Die beiden Personen teilen die Seiten auf (z. B. je die Hälfte). Jedes Ergebnis wird mit dem Kürzel der Person gespeichert, nichts wird überschrieben.
+- Am gemeinsamen Mac beruht die Blindheit auf einer Regel: Vor der eigenen Gegenprüfung startet die prüfende Person kein `evaluate` und sieht weder Ergebnisse noch Bildschirmfotos der anderen Person (README).
 - Betrifft V4 und V2. Pro CMP mit Verstoß: eine verstoßende Seite und gleich viele unauffällige Seiten. Die andere Person prüft sie blind, ohne das erste Ergebnis zu kennen.
 - Bei Abweichung zählt das mildere Ergebnis, **und** alle Seiten dieser CMP werden neu geprüft.
 

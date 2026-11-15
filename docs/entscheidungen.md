@@ -110,7 +110,7 @@ Fälle wie amazon.de (CMP 376): `__tcfapi` antwortet, der Listener liefert aber 
 
 ## E8 (2026-11-09): Crawl unter dem normalen macOS-Nutzer statt unter einem eigenen Crawl-Nutzer
 
-Geplant war ein eigener macOS-Nutzer `crawler` (CLAUDE.md, „Sicheres Umfeld“). Beim Einrichten (eigenes Klonen, eigenes venv, eigenes nvm, getrennte Zwischenablage, schneller Benutzerwechsel) war der Aufwand an zwei Macs zu hoch. Deshalb laufen alle Crawls unter dem normalen Nutzer der jeweiligen Person.
+Geplant war ein eigener macOS-Nutzer `crawler` (CLAUDE.md, „Sicheres Umfeld“). Beim Einrichten (eigenes Klonen, eigenes venv, eigenes nvm, getrennte Zwischenablage, schneller Benutzerwechsel) war der Aufwand an zwei Macs zu hoch. Deshalb laufen alle Crawls unter dem normalen Nutzer der jeweiligen Person. (Seit E10 messen beide Personen am selben Mac unter demselben Nutzer; E10 löst den Teil zu zwei Personen ab.)
 
 - Erlaubt sind nur die Nutzer in `config.CRAWL_USERS`. Ein echter Lauf unter einem anderen Nutzer bricht ab. Die übrigen Prüfungen bleiben (sauberer Git-Stand, Chrome und chromedriver in der Version aus `config.py`, `arm64`, IP-Land `DE`).
 - Weiterhin gilt: frisches temporäres Browserprofil pro Sitzung (`browser.fresh_temporary_profile` in den Metadaten), keine Browser-Erweiterungen, keine Logins im Crawl-Browser.
@@ -128,3 +128,12 @@ Vorfilter und automatischer Modus laufen mehrere Stunden. Nach Ctrl+C (oder eine
 - Fortsetzen wird bei echten Läufen verweigert, wenn Git-Commit, Chrome, chromedriver oder Konfiguration vom Start des Laufs abweichen; die Metadaten des Laufs sollen für alle Teile gelten. Die übrigen Prüfungen jedes Laufs (Nutzer, sauberer Git-Stand, Architektur, IP-Land) gelten auch hier. Während ein Lauf unterbrochen ist, also nichts committen.
 - Jedes Fortsetzen steht mit seinen Metadaten (Zeit, IP-Land, GVL- und CMP-Liste) in der Tabelle `run_part` (Schema-Version 4) und unter `parts` in `run_metadata.json`. Der automatische Modus nutzt nach dem Fortsetzen die CMP-Liste dieses Teils.
 - Gegenüber Matte et al. (2020) keine Abweichung in der Messung; die Teile eines Laufs liegen nur zeitlich auseinander. Im Methodenteil nennen, falls ein Lauf unterbrochen wurde (Zeitspanne aus `run_part`).
+
+## E10 (2026-11-15): Beide Personen messen am selben Mac
+
+Statt an zwei Macs mit zwei Datenbanken und Zusammenführen arbeiten beide Personen am selben Mac, unter demselben macOS-Nutzer und mit derselben Datenbank pro Zweck. Unterschieden werden sie nur über das Kürzel (`--operator ae` bzw. `--operator xy`).
+
+- `config.CRAWL_USERS` braucht nur einen Eintrag. `environment.os_user` in den Metadaten ist für beide Personen gleich; wer geprüft hat, steht am Lauf und an jeder Prüfung (`operator`).
+- Kein Weitergeben von Dateien, kein `merge_databases.py` (bleibt im Code, nur falls doch an zwei Macs gemessen wird).
+- Alle Messungen laufen mit demselben Browser, derselben IP und demselben Gerät; das schließt Unterschiede zwischen zwei Macs als Ursache von Abweichungen in der Gegenprüfung aus.
+- Blinde Gegenprüfung: Die Ergebnisse der anderen Person liegen in derselben Datenbank und unter `data/`. Die Blindheit beruht deshalb auf einer Regel (README, „Zwei Personen an einem Mac“): vor der eigenen Gegenprüfung kein `evaluate`, kein `crosscheck evaluate`, kein Blick in die Datenbank, in `selection.json`, in `data/evaluation-*` oder in die Lauf-Ordner und Bildschirmfotos der anderen Person; Gegenprüfung in einem neuen Terminalfenster. Die Lauf-Ordner tragen das Kürzel im Namen (`data/semi-automatic-<Zweck>-<Kürzel>-<Zeit>/`), eine weitere Trennung im Code gibt es nicht.
