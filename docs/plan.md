@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Prüfung der Crawl-Umgebung in `docs/crawl-nutzer.md`.
 
-Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (Lauf durch die Person steht aus), Phase 11 fertig bis auf die Zahlen im Methodenteil. Nichts gepusht.
+Stand: 2026-11-15, Branch `tcf22-port`, Phase 10 fertig, Vorab-Lauf fertig, Phase 11 fertig bis auf die Zahlen im Methodenteil. Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -27,7 +27,7 @@ Stand: 2026-10-31, Branch `tcf22-port`, Phase 9 fertig, Phase 10 vorbereitet (La
 | 7 | Halbautomatischer Modus (V2–V4), `run_list.py` als Einstieg | fertig, Test an 2–3 echten Seiten durch die Person offen | siehe `git log` |
 | **8** | **Verstoß-Logik und Auswertung** | **als Nächstes** | |
 | 9 | Unit-Tests vervollständigen | offen | |
-| 10 | Testlauf an 10 GQ3LK-Seiten, beide Modi | offen | |
+| 10 | Testlauf an 10 GQ3LK-Seiten, beide Modi | fertig (2026-11-15) | |
 | 11 | Doku (README, Abweichungen vervollständigen) | offen | |
 
 Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–5).
@@ -108,6 +108,12 @@ Dazu in Phase 9:
 
 Vorbereitet (2026-10-31): Die Mini-CMP am Prüfstand erzeugt mit `?verstoss=v2n|v4streng|v4matte|v4locker` gezielt Verstöße; `lists/pruefstand_gegenpruefung.csv` hat sechs Testseiten dafür. `tests/check_crosscheck_flow.py` spielt die Gegenprüfung mit Klicks aus dem Testskript durch (erste Prüfung → `select` → blinde Prüfung xy → `evaluate` → `recheck` → Auswertung); Lauf am 2026-10-31 ohne Fehler. Offen: der Lauf durch die Person (10 Seiten automatisch, die 5 TCF-Seiten halbautomatisch, Gegenprüfung am Prüfstand).
 
+Ergebnis (2026-11-15):
+
+- Automatisch: kleine Testläufe (31.10., 9.11.), danach der Vorab-Lauf mit 1000 Domains und 250 TCF-Seiten (siehe Offene Punkte). Halbautomatisch an echten Seiten: t-online.de, amazon.de, bild.de (31.10.).
+- Gegenprüfung am Prüfstand von Hand, eine Person in beiden Rollen (`--test`, `lists/pruefstand_gegenpruefung.csv`): erste Prüfung ae (6 Seiten; ein Fehlklick bei pruefstand-ok-1.test mit `--role correction` korrigiert) → `crosscheck select` (3 Seiten für xy) → blinde Gegenprüfung xy, davon 1 Seite fertig (pruefstand-v4matte.test, absichtlich „nur 2. Ebene“) → `crosscheck evaluate`: Abweichung bei V2 erkannt, mildere Einstufung (1. Ebene, ae) zählt, `recheck.csv` mit allen 6 Seiten der CMP 300 → `evaluate`: Abweichung in `tables.md` ausgewiesen, V2 1/6, V4 streng 2/5, Matte-Variante 1/5, locker 3/5 wie erwartet. Die Neuprüfung wurde nicht von Hand gemacht (abgedeckt durch `tests/check_crosscheck_flow.py`).
+- Prüfstand: „Weitergabe an Dritte nach Ablehnen“ ist dort immer 100 %, weil `tests/site/frame.html` bei jedem Laden einen festen TC-String mit den Zwecken 1–11 sendet (Fixture für den Kanaltest); kein Fehler des Werkzeugs.
+
 ## Phase 11: Doku
 
 README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blinde Gegenprüfung): fertig. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Methodenteil: Entwurf in `docs/methodenteil.md`, Platzhalter für Zahlen, Zeitraum, Standort und Versionen.
@@ -116,7 +122,7 @@ README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blin
 
 - Vorab-Lauf 2026-11-09: Vorfilter fertig (1000 → 890 geladen → 250 TCF, `data/prefilter-vorab-2026-11-09--08-54-51`). Automatischer Modus brach bei Seite 92 (skyscanner.de) ab: chromedriver lieferte für ein iframe `{}` statt eines Elements. Korrigiert in `capture.py` und `cookiewall.py`; ein unerwarteter Fehler beendet seither nur die Seite (`aborted`, Fehler in `note`), nicht den Lauf. Seiten 1–91 stammen aus dem Lauf mit Commit 00e058e, Seiten 92–250 aus einem neuen Lauf mit der Korrektur (Liste `data/prefilter-vorab-2026-11-09--08-54-51/tcf_sites_ab_92.csv`).
 - Auswertung angepasst (2026-11-15): V1 in Tab. III mit drei Vergleichswerten von Matte (.de 16/56 Tab. V, 6 TLDs 65/560 Tab. IV a, alle TLDs 141/1426 Tab. III) und zusätzlich mit Mattes Nenner (ohne TC-String = kein Verstoß; vorab 0/250); Satz zur Untergrenze unter Tab. II (urllib 3, Original-Cookinspect 9 Seiten); neue Details: berechtigtes Interesse vor der Wahl (mindestens eine / beide Sitzungen, Zwecke 3–6 getrennt; vorab 81/192, keine Seite mit 3–6) und Liste Vendor-Consent ohne Zweck-Consent (vorab 7 Seiten, 6 davon CMP 31). Neue Auswertung: `data/evaluation-vorab-2026-11-15--15-05-01`.
-- Ein Mac für beide Personen (E10, 2026-11-15): Personen nur über `--operator`, kein Zusammenführen; Blind-Regel in README. Offen: Gegenprüfung am Prüfstand durch die Person (Phase 10).
+- Ein Mac für beide Personen (E10, 2026-11-15): Personen nur über `--operator`, kein Zusammenführen; Blind-Regel in README. Gegenprüfung am Prüfstand: Phase 10.
 - Fortsetzen unterbrochener Läufe (E9, 2026-11-09): `--resume <Lauf-Ordner>` für Vorfilter und automatischen Modus (`resume.py`, Tabelle `run_part`, Schema 4); Unit-Tests in `tests/test_resume.py`, echter Test mit Ctrl+C an 8 Domains und 2 TCF-Seiten ohne Fehler.
 - Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`. Offen: macOS-Nutzer der zweiten Person eintragen und committen. Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
 - Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
