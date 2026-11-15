@@ -1,6 +1,6 @@
 """Block detection and funnel of the prefilter (offline)."""
 from page import detect_block, read_ranked_domains
-from prefilter import funnel
+from prefilter import funnel, funnel_table
 
 
 def test_block_by_status():
@@ -65,6 +65,12 @@ def test_funnel_columns():
     # c.de is allowed by the original code, but not loaded, because Protego forbids it;
     # e.de is unreachable, so it does not count as allowed
     assert (cookinspect["allowed"], cookinspect["allowed_not_loaded_protego_forbids"], cookinspect["loaded"]) == (6, 1, 4)
+    # the TCF count of a column is a lower bound if sites allowed only there were not loaded
+    text = funnel_table(result)
+    assert "In der Spalte Original-Cookinspect (1 Seite) ist die Zahl der TCF-Seiten eine Untergrenze" in text
+    rows.append(row("h.de", False, True, True))
+    assert "In den Spalten urllib (1 Seite) und Original-Cookinspect (2 Seiten)" in funnel_table(funnel(rows))
+    assert "Untergrenze" not in funnel_table(funnel(rows[:2]))
 
 
 def test_read_ranked_domains(tmp_path):

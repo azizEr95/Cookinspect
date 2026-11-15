@@ -27,11 +27,15 @@ from site_data import MAIN_CHANNELS, MATTE_CHANNELS, session_of
 
 PHASES = ("before", "after_reject", "after_reject_reload", "after_accept", "after_accept_reload")
 
-# Matte et al. (2020), Tab. III (semi-automatic crawl: 560 sites, 508 with a way to refuse)
+# Matte et al. (2020), Tab. III: V1 from the automatic crawl of all TLDs (1426 TCF sites), V2-V4
+# from the semi-automatic crawl of 6 TLDs (560 sites, 508 with a way to refuse)
 MATTE_TAB_III = {
-    "v1_some": "2,1 % (30/1426)", "v1_all": "7,8 % (111/1426)", "v1": "9,9 % (141/1426)",
+    "v1_some": "alle TLDs 2,1 % (30/1426)", "v1_all": "alle TLDs 7,8 % (111/1426)",
     "v2": "6,8 % (38/560)", "v3": "46,5 % (236/508)",
     "v4_some": "6,7 % (34/508)", "v4_all": "5,3 % (27/508)", "v4": "5,3 % (27/508)", "any": "54,29 % (304/560)"}
+# Matte's V1 for comparison, most important first: .de, the 6 TLDs of the semi-automatic crawl, all TLDs
+MATTE_V1 = ((".de", "28,6 % (16/56)", "Tab. V, S. 10"), ("6 TLDs", "11,6 % (65/560)", "Tab. IV a, S. 10"),
+            ("alle TLDs", "9,9 % (141/1426)", "Tab. III, S. 9"))
 
 
 @lru_cache(maxsize=None)
@@ -49,6 +53,9 @@ def evaluate_site(site):
         "v1": v.v1(automatic),
         "v1_matte_variant": v.v1(automatic, matte_variant=True),
         "v1_matte_channels": v.v1(automatic, channels=MATTE_CHANNELS),
+        "v1_matte_denominator": v.v1_matte_denominator(automatic),
+        "li_before": v.li_before(automatic),
+        "vendors_without_purpose_before": v.vendors_without_purpose_before(automatic),
         "v3_purposes": v.v3(label, "purposes"),
         "v3_vendors": v.v3(label, "vendors"),
         "v3_either_matte": v.v3(label, "either", matte_denominator=True),
@@ -109,6 +116,10 @@ def csv_row(site, results):
     row["v4_purposes_after_accept"] = " ".join(map(str, results["v4_strict"].get("purposes_after_accept", [])))
     differs = v.v4_action_differs(site["semi"])
     row["v4_action_differs_reject"], row["v4_action_differs_accept"] = differs.get("reject"), differs.get("accept")
+    li_before = results["li_before"]
+    for variant in ("any", "both"):
+        purposes = li_before.get(f"purposes_{variant}")
+        row[f"li_before_purposes_{variant}"] = None if purposes is None else " ".join(map(str, purposes))
     li = results["li_after_reject"]
     row["li_purposes"] = " ".join(map(str, li.get("purpose_li", [])))
     row["li_purposes_3_6"] = " ".join(map(str, li.get("purpose_li_3_6", [])))
@@ -169,6 +180,7 @@ def tab_iii(results, semi_sites):
     v1_all = figure(results, "v1", lambda r: r["value"] == v.YES and r.get("all_purposes"))
     v1_some = figure(results, "v1", lambda r: r["value"] == v.YES and not r.get("all_purposes"))
     v1_total = figure(results, "v1")
+    v1_matte_denominator = figure(results, "v1_matte_denominator")
     v4_all = figure(results, "v4_matte")
     # as Matte's row "1 to 4 purposes": lax, but not the Matte variant
     v4_some = figure(results, "v4_lax", lambda r: r["value"] == v.YES)
@@ -177,7 +189,8 @@ def tab_iii(results, semi_sites):
     v2 = {h: figure(semi_sites, f"v2_{h}") for h in v.COOKIEWALL_HANDLINGS}
     v3 = figure(results, "v3_either_matte")
     any_main = sum(1 for r in semi_sites.values() if any_violation(r))
-    figures = {"v1_some": v1_some, "v1_all": v1_all, "v1": v1_total, "v2": v2, "v3": v3,
+    figures = {"v1_some": v1_some, "v1_all": v1_all, "v1": v1_total, "v1_matte_denominator": v1_matte_denominator,
+               "v2": v2, "v3": v3,
                "v4_some": v4_some, "v4_all": v4_all, "v4": v4_all,
                "any": {"hits": any_main, "denominator": len(semi_sites), "text": percent(any_main, len(semi_sites))}}
     v2_text = " / ".join(f"{v2[h]['text']} ({v.COOKIEWALL_TEXT[h]})" for h in v.COOKIEWALL_HANDLINGS)
@@ -186,7 +199,9 @@ def tab_iii(results, semi_sites):
          f"{v4_some['text']} [Matte {MATTE_TAB_III['v4_some']}]"],
         ["alle Zwecke, 1–11 bzw. bei Policy < 4: 1–10 (V4: Matte-Variante)", f"{v1_all['text']} [Matte {MATTE_TAB_III['v1_all']}]", "–", "–",
          f"{v4_all['text']} [Matte {MATTE_TAB_III['v4_all']}]"],
-        ["**Gesamt (gewertete Fälle)**", f"**{v1_total['text']}** [Matte {MATTE_TAB_III['v1']}]",
+        ["**Gesamt (gewertete Fälle)**",
+         f"**{v1_total['text']}**; mit Mattes Nenner {v1_matte_denominator['text']} [Matte "
+         + "; ".join(f"{where} {value}, {source}" for where, value, source in MATTE_V1) + "]",
          f"**{v2_text}** [Matte {MATTE_TAB_III['v2']}]", f"**{v3['text']}** [Matte {MATTE_TAB_III['v3']}]",
          f"**{v4_all['text']}** [Matte {MATTE_TAB_III['v4']}]"],
     ]
@@ -199,7 +214,7 @@ def tab_iii(results, semi_sites):
 
 TAB_III_MAPPING = """Zuordnung zu Matte Tab. III:
 
-- V1 Gesamt ↔ „1 to 5 purposes“ (Spalte „Consent stored before choice“, Summe beider Zeilen): Kanal 1, beide Vorher-Snapshots des automatischen Modus zeigen ≥ 1 Zweck. Zeile „alle Zwecke“ ↔ „5 purposes“, Zeile „1 bis weniger als alle“ ↔ „1 to 4 purposes“. Nenner: alle auswertbaren Seiten des automatischen Modus (Matte: 1426 TCF-Seiten); nicht auswertbare Seiten (E7) stehen unten.
+- V1 Gesamt ↔ „1 to 5 purposes“ (Spalte „Consent stored before choice“, Summe beider Zeilen): Kanal 1, beide Vorher-Snapshots des automatischen Modus zeigen ≥ 1 Zweck. Zeile „alle Zwecke“ ↔ „5 purposes“, Zeile „1 bis weniger als alle“ ↔ „1 to 4 purposes“. Nenner: alle auswertbaren Seiten des automatischen Modus; nicht auswertbare Seiten (E7) stehen unten. „Mit Mattes Nenner“: alle TCF-Seiten des automatischen Modus, eine Seite ohne TC-String gilt als kein Verstoß (Matte S. 7). Vergleichswerte: .de (Tab. V, 56 Seiten) ist der wichtigste Vergleich; dazu die 6 TLDs des halbautomatischen Teils (Tab. IV a, 560 Seiten) und alle TLDs (Tab. III, 1426 Seiten). Die Zeilen nach Anzahl Zwecke gibt Matte nur für alle TLDs an.
 - V2 ↔ „No way to opt out“: Code `n` (Ablehnen gar nicht möglich); `w` je nach Variante ausgeschlossen oder als V2 gezählt. Nenner: alle halbautomatisch geprüften Seiten mit gültigem Ergebnis (Matte: 560).
 - V3 ↔ „Pre-selected choices“: Zwecke **oder** Vendoren vorausgewählt; Nenner wie bei Matte alle Seiten mit kostenloser Ablehnmöglichkeit (Matte: 508), ohne 2. Ebene = nicht vorausgewählt. Die Hauptzahl mit dem Nenner „2. Ebene vorhanden“ steht unten (V3).
 - V4 Matte-Variante ↔ „5 purposes“ (in Tab. III fett, gewertet): nach Ablehnen alle Zwecke gesetzt, die nach Akzeptieren gesetzt sind, und ≥ 1 Vendor-Consent. V4 locker (≥ 1 Zweck nach Ablehnen) ↔ „1 to 4 purposes“ zusammen mit „5 purposes“; die erste Zeile zeigt bei V4 locker **ohne** die Matte-Variante, wie Mattes Zeile „1 to 4 purposes“ (dort nicht gewertet); dazu gehört auch „streng ohne Vendor-Consent“, selbst wenn alle Zwecke gesetzt sind. Bei V4 benennen die Zeilen also die Variante, nicht die Zahl der Zwecke. Nenner: Seiten mit Code `r` und auswertbarem Snapshot (Matte: 508). Berechnet auf den Snapshots nach dem Reload.
@@ -225,8 +240,11 @@ def details(results, semi_sites, sites):
     block("V1 Zustimmung vor der Wahl (automatischer Modus, beide Sitzungen)", [
         line("V1 Hauptzahl (Kanal 1, ≥ 1 Zweck)", "v1"),
         line("V1 Matte-Variante (≥ 1 Zweck und ≥ 1 Vendor)", "v1_matte_variant"),
-        line("V1 Matte-Kanäle (irgendein Kanal: 1, 2, Cookie, localStorage)", "v1_matte_channels")])
+        line("V1 Matte-Kanäle (irgendein Kanal: 1, 2, Cookie, localStorage)", "v1_matte_channels"),
+        line("V1 mit Mattes Nenner (alle TCF-Seiten, ohne TC-String = kein Verstoß)", "v1_matte_denominator")])
     parts.append("Nicht auswertbar (V1, E7): " + format_reasons(reasons(results, "v1")))
+    parts.append(li_before_table(results))
+    parts.append(vendors_without_purpose_list(results, sites))
 
     rows = []
     for handling in v.COOKIEWALL_HANDLINGS:
@@ -325,6 +343,42 @@ def details(results, semi_sites, sites):
     return "\n\n".join(parts)
 
 
+def li_before_table(results):
+    """Legitimate interest before the choice (automatic mode), counted like V1: in at least one
+    session and in both sessions, per purpose; purposes 3-6 separately."""
+    li = [r["li_before"] for r in results.values() if r["li_before"]["value"] != v.NA]
+    both = [r for r in li if r["purposes_both"] is not None]
+    not_evaluable = sum(1 for r in results.values() if r["li_before"]["value"] == v.NA)
+
+    def row(label, condition):
+        return [label, percent(sum(1 for r in li if condition(r["purposes_any"])), len(li)),
+                percent(sum(1 for r in both if condition(r["purposes_both"])), len(both))]
+
+    rows = [row("≥ 1 Zweck mit LI", bool),
+            row("davon Zwecke 3–6 (seit v2.2 nicht erlaubt)", lambda p: bool(set(p) & v.LI_NOT_ALLOWED))]
+    rows += [row(f"Zweck {n}" + (" (3–6)" if n in v.LI_NOT_ALLOWED else ""), lambda p, n=n: n in p)
+             for n in sorted(v.PURPOSES_V2_2)]
+    return ("### Berechtigtes Interesse vor der Wahl (automatischer Modus, Kanal 1)\n\n"
+            + table(["Kennzahl", "mindestens eine Sitzung", "beide Sitzungen"], rows)
+            + f"\n\nNenner: Seiten mit TC-String vor der Wahl in mindestens einer Sitzung ({len(li)}) bzw. in beiden "
+              f"Sitzungen ({len(both)}). Ohne TC-String in beiden Sitzungen: {not_evaluable}.")
+
+
+def vendors_without_purpose_list(results, sites):
+    """Sites with vendor consent but no purpose consent before the choice (automatic mode)."""
+    rows = []
+    for domain, r in results.items():
+        sessions = r["vendors_without_purpose_before"].get("sessions") or {}
+        if sessions:
+            rows.append([domain, sites[domain]["cmp_id"],
+                         " / ".join(f"Sitzung {n}: {count}" for n, count in sorted(sessions.items())),
+                         "beide" if len(sessions) == 2 else ", ".join(map(str, sorted(sessions)))])
+    title = "### Vendor-Consent ohne Zweck-Consent vor der Wahl (automatischer Modus, Kanal 1; kein Verstoß)"
+    if not rows:
+        return f"{title}\n\nkeine"
+    return f"{title}\n\n" + table(["Seite", "CMP-ID", "Vendoren mit Consent", "Sitzungen"], rows)
+
+
 def e6(flags):
     """E6: heuristic of the automatic mode against w and against cookiewall_seen."""
     parts = ["### E6 Cookiewall-Heuristik (automatischer Modus) gegen die Labels"]
@@ -374,7 +428,8 @@ def write_evaluation(conn, purpose, out_dir, database_name=""):
         f"{len(sites)} Seiten: {sum(1 for s in sites.values() if s['automatic'])} im automatischen Modus, "
         f"{len(semi_sites)} halbautomatisch mit gültigem Ergebnis. Datenbank: `{database_name}`.",
         "## Tab. II: Trichter (Vergleich Matte, .de)", tab_ii_text,
-        "## Tab. III: Verstöße (Vergleich Matte; in eckigen Klammern Mattes Werte für alle 6 TLDs)", tab_iii_text,
+        "## Tab. III: Verstöße (Vergleich Matte; in eckigen Klammern Mattes Werte: bei V1 wie in der Zelle "
+        "angegeben, bei V2–V4 für die 6 TLDs des halbautomatischen Teils)", tab_iii_text,
         TAB_III_MAPPING,
         "## Details", details(results, semi_sites, sites),
         "## Gegenprüfung: Abweichungen (das mildere Ergebnis zählt; alle Seiten der CMP neu prüfen)",

@@ -210,6 +210,15 @@ def funnel_table(result):
     row("TCF-Anteil an geladenen (mit gesperrten, vergleichbar mit Matte)",
         [percent(c[n]["tcf_share_of_loaded"]) for n in names], percent(MATTE_TAB_II_DE["tcf_share_of_loaded"]))
     row("TCF-Anteil an geladenen ohne gesperrte", [percent(c[n]["tcf_share_of_loaded_not_blocked"]) for n in names])
+    # crawled is what Protego allows: a site allowed only by urllib or Cookinspect was never loaded
+    only_there = [(text, c[n]["allowed_not_loaded_protego_forbids"])
+                  for n, text in (("urllib", "urllib"), ("cookinspect", "Original-Cookinspect"))
+                  if c[n]["allowed_not_loaded_protego_forbids"]]
+    if only_there:
+        columns = " und ".join(f"{text} ({count} {'Seite' if count == 1 else 'Seiten'})" for text, count in only_there)
+        lines.append(f"\n{'In der Spalte' if len(only_there) == 1 else 'In den Spalten'} {columns} ist die Zahl der "
+                     "TCF-Seiten eine Untergrenze, weil diese Seiten nur dort von robots.txt erlaubt waren und deshalb "
+                     "nicht geladen wurden (gecrawlt wird nach Protego).")
     return "\n".join(lines)
 
 

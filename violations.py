@@ -81,6 +81,55 @@ def v1(automatic, channels=MAIN_CHANNELS, matte_variant=False):
                   purposes_min=fewest, all_purposes=all(shows) and complete)
 
 
+def v1_matte_denominator(automatic, channels=MAIN_CHANNELS):
+    """V1 with Matte's denominator: every site of the automatic mode counts; a site without a TC
+    string counts as no violation (Matte, p. 7), not as "nicht auswertbar" (E7)."""
+    if automatic is None:
+        return result(NA, "kein automatischer Modus")
+    main = v1(automatic, channels)
+    return result(YES if main["value"] == YES else NO, main["reason"])
+
+
+def before_phases(automatic):
+    """[(session number, snapshot "before" or None)] of the automatic mode."""
+    return [(s["number"], s["phases"].get("before")) for s in automatic["sessions"]]
+
+
+def li_before(automatic, channels=MAIN_CHANNELS):
+    """Legitimate interest before the choice, counted like V1: purposes with LI in at least one
+    session (union over the sessions with a string) and in both sessions (intersection; only if
+    both have a string). Purposes 3-6 are not allowed with LI since v2.2."""
+    if automatic is None:
+        return result(NA, "kein automatischer Modus")
+    sessions = [strings_of(phase, channels) for _, phase in before_phases(automatic)]
+    with_string = [set().union(*(s["purpose_li"] for s in strings)) for strings in sessions if strings]
+    if not with_string:
+        return result(NA, "kein TC-String vor der Wahl")
+    any_session = set().union(*with_string)
+    both = set.intersection(*with_string) if len(with_string) == len(sessions) == 2 else None
+    return result(YES if any_session else NO, purposes_any=sorted(any_session),
+                  purposes_any_3_6=sorted(any_session & LI_NOT_ALLOWED),
+                  purposes_both=None if both is None else sorted(both),
+                  purposes_both_3_6=None if both is None else sorted(both & LI_NOT_ALLOWED))
+
+
+def vendors_without_purpose_before(automatic, channels=MAIN_CHANNELS):
+    """Vendor consent without any purpose consent before the choice (not a violation, shown as a
+    list): sessions = {session number: number of vendors with consent}."""
+    if automatic is None:
+        return result(NA, "kein automatischer Modus")
+    sessions = {}
+    evaluable = False
+    for number, phase in before_phases(automatic):
+        has_string, purposes, vendors = consent(phase, channels)
+        evaluable |= has_string
+        if has_string and not purposes and vendors:
+            sessions[number] = len(vendors)
+    if not evaluable:
+        return result(NA, "kein TC-String vor der Wahl")
+    return result(YES if sessions else NO, sessions=sessions)
+
+
 # --- V2 no way to reject
 
 def v2(label, handling="exclude"):

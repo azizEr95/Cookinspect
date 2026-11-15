@@ -85,6 +85,31 @@ def test_v1_matte_channels_any_channel_shows_it():
     assert v.v1(site, channels=site_data.MATTE_CHANNELS)["value"] == v.YES
 
 
+def test_v1_matte_denominator_counts_sites_without_string_as_no():
+    # Matte p. 7: no TC string -> no violation; every site of the automatic mode is in the denominator
+    without_string = automatic(phase(status="no_tc_string"), phase(status="no_tc_string"))
+    assert v.v1_matte_denominator(without_string)["value"] == v.NO
+    assert v.v1_matte_denominator(automatic(phase(tc({1}, {10})), phase(tc({1}, {10}))))["value"] == v.YES
+    assert v.v1_matte_denominator(None)["value"] == v.NA
+
+
+def test_li_before_in_one_and_in_both_sessions():
+    result = v.li_before(automatic(phase(tc(purpose_li={2, 3, 7})), phase(tc(purpose_li={2, 7}))))
+    assert result["value"] == v.YES
+    assert (result["purposes_any"], result["purposes_any_3_6"]) == ([2, 3, 7], [3])
+    assert (result["purposes_both"], result["purposes_both_3_6"]) == ([2, 7], [])
+    # only one session with a string: counts for "at least one session", not for "both"
+    one = v.li_before(automatic(phase(tc(purpose_li={4})), phase(status="no_tc_string")))
+    assert (one["purposes_any"], one["purposes_both"]) == ([4], None)
+    assert v.li_before(automatic(phase(status="no_tc_string"), phase(status="no_tc_string")))["value"] == v.NA
+
+
+def test_vendor_consent_without_purpose_consent_before():
+    result = v.vendors_without_purpose_before(automatic(phase(tc((), {10, 11})), phase(tc({1}, {10}))))
+    assert (result["value"], result["sessions"]) == (v.YES, {1: 2})
+    assert v.vendors_without_purpose_before(automatic(phase(tc({1}, {10})), phase(tc())))["value"] == v.NO
+
+
 # --- V2, V3
 
 def test_v2_by_layer_and_cookiewall_handling():
@@ -351,8 +376,15 @@ def test_tables_with_matte_mapping(monkeypatch):
     assert [figures["v2"][h]["text"] for h in v.COOKIEWALL_HANDLINGS] == ["0,0 % (0/2)", "33,3 % (1/3)"]
     assert figures["any"]["text"] == "33,3 % (1/3)"
     assert "[Matte 5,3 % (27/508)]" in text
+    assert figures["v1_matte_denominator"]["text"] == "33,3 % (1/3)"
+    assert ("mit Mattes Nenner 33,3 % (1/3) [Matte .de 28,6 % (16/56), Tab. V, S. 10; 6 TLDs 11,6 % (65/560), "
+            "Tab. IV a, S. 10; alle TLDs 9,9 % (141/1426), Tab. III, S. 9]") in text
+    assert "[Matte alle TLDs 7,8 % (111/1426)]" in text
     assert "V4 Matte-Variante ↔ „5 purposes“" in evaluate.TAB_III_MAPPING
-    assert "Heuristik gegen Code w" in evaluate.details(results, results, sites)
+    details = evaluate.details(results, results, sites)
+    assert "Heuristik gegen Code w" in details
+    assert "### Berechtigtes Interesse vor der Wahl" in details
+    assert "Vendor-Consent ohne Zweck-Consent vor der Wahl" in details and "| a.de | 6 |" not in details
 
 
 def test_e5_consent_for_vendors_missing_in_the_gvl():
