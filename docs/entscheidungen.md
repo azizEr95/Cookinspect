@@ -116,7 +116,7 @@ Geplant war ein eigener macOS-Nutzer `crawler` (CLAUDE.md, „Sicheres Umfeld“
 - Weiterhin gilt: frisches temporäres Browserprofil pro Sitzung (`browser.fresh_temporary_profile` in den Metadaten), keine Browser-Erweiterungen, keine Logins im Crawl-Browser.
 - Restrisiko: Bei einer Sicherheitslücke im Browser hätte eine besuchte Seite Zugriff auf die Dateien des Nutzers. Wir nehmen das hin, weil Chrome for Testing in einer aktuellen Stable-Version läuft (`config.CHROME_VERSION`) und nur bekannte Websites aus der Tranco-Liste besucht werden.
 - Reproduzierbarkeit: Der Nutzer steht in den Metadaten jedes Laufs (`environment.os_user`). Im Methodenteil wird beschrieben, dass unter dem normalen Nutzer mit frischem Profil gemessen wurde.
-- Gegenüber Matte et al. (2020) ist das keine Abweichung (dort ist kein eigener Nutzer beschrieben), deshalb steht es nicht in `docs/abweichungen.md`.
+- Gegenüber dem Paper von Matte et al. (2020) ist das keine Abweichung (dort ist kein eigener Nutzer beschrieben), wohl aber gegenüber der README des ursprünglichen Codes, die mindestens einen eigenen Unix-Nutzer ohne Rechte empfiehlt. Das steht deshalb in `docs/abweichungen.md` (Zeile „Crawl-Umgebung“).
 
 ## E9 (2026-11-09): Unterbrochene Läufe fortsetzen (Vorfilter und automatischer Modus)
 
