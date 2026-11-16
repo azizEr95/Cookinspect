@@ -124,6 +124,25 @@ def test_tc_strings_once_with_all_ids(conn):
     assert tuple(stored)[:4] == (0, 100, 1, "Google LLC")   # no GVL: IDs kept, only GVL checks missing
 
 
+def test_tc_string_with_whitespace_keeps_its_raw_value_and_id(conn):
+    raw = FIXTURES["purposes_1_10"] + " "   # as sent to a third party on eurosport.de
+    ids = database.store_tc_strings(conn, [raw], CMP_LIST)
+    stored = conn.execute("SELECT tc_string, decoded FROM tc_string WHERE id = ?", (ids[raw],)).fetchone()
+    assert tuple(stored) == (raw, 1)
+    assert conn.execute("SELECT count(*) FROM tc_string_entry WHERE tc_string_id = ? AND field = 'purpose_consent'",
+                        (ids[raw],)).fetchone()[0] == 2
+
+
+def test_tc_string_with_line_break_is_stored_but_not_decoded(conn):
+    raw = FIXTURES["purposes_1_10"] + "\n"
+    ids = database.store_tc_strings(conn, [raw, FIXTURES["li_forbidden_3_to_6"]], CMP_LIST)
+    assert conn.execute("SELECT count(*) FROM tc_string").fetchone()[0] == 2
+    stored = conn.execute("SELECT tc_string, decoded, decode_error FROM tc_string WHERE id = ?", (ids[raw],)).fetchone()
+    assert tuple(stored) == (raw, 0, "contains a line break, not decoded")
+    other = conn.execute("SELECT decoded FROM tc_string WHERE id = ?", (ids[FIXTURES["li_forbidden_3_to_6"]],)).fetchone()
+    assert other[0] == 1
+
+
 def test_capture_of_a_session(conn):
     run_id = database.insert_run(conn, METADATA)
     examination_id = examination_with_sessions(conn, run_id, FIXTURES["no_consent"], FIXTURES["all_purposes"])

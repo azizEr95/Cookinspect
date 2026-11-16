@@ -28,12 +28,20 @@ def decoder_version():
 
 
 def decode_tc_strings(tc_strings):
-    """Decodes all strings in one Node process. Returns one dict per string, in the same order."""
-    if not tc_strings:
-        return []
-    lines = "".join(f"{s}\n" for s in tc_strings)
-    result = subprocess.run(["node", str(DECODER_CLI)], input=lines, capture_output=True, text=True, check=True)
-    return [json.loads(line) for line in result.stdout.splitlines()]
+    """Decodes all strings in one Node process. Returns one dict per string, in the same order.
+    tcString is always the string as given: cli.mjs trims it before decoding, and the database
+    keys the string by the SHA-256 of the raw value (a request to a third party on eurosport.de
+    carried one with whitespace). A string with a line break would split into two input lines;
+    it is not decoded, only marked."""
+    single_line = [s for s in tc_strings if "\n" not in s and "\r" not in s]
+    decoded = []
+    if single_line:
+        lines = "".join(f"{s}\n" for s in single_line)
+        result = subprocess.run(["node", str(DECODER_CLI)], input=lines, capture_output=True, text=True, check=True)
+        decoded = [json.loads(line) for line in result.stdout.splitlines()]
+    by_string = {s: {**d, "tcString": s} for s, d in zip(single_line, decoded)}
+    return [by_string.get(s) or {"tcString": s, "decoded": False, "reason": "contains a line break, not decoded"}
+            for s in tc_strings]
 
 
 def specification_checks(decoded):
