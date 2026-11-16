@@ -226,6 +226,21 @@ class Session:
         except TimeoutException:
             pass   # the page did not finish within the timeout; what is loaded is read anyway
 
+    def wait_until_responsive(self, moment):
+        """Some sites load anew after the click and take longer than the page load timeout
+        (wetteronline.de, tagesspiegel.de after accepting). chromedriver then answers the next command
+        with "Timed out receiving message from renderer". Waits up to config.MAX_TRIES_TIMEOUT times;
+        every timeout is noted in load_errors. If the page still does not answer, the next command
+        fails as before and the examination is repeated at the next start."""
+        for attempt in range(1, config.MAX_TRIES_TIMEOUT + 1):
+            try:
+                self.driver.execute_script("return document.readyState")
+                return
+            except TimeoutException:
+                error = f"renderer timeout {moment} ({attempt})"
+                self.fields["load_errors"] = "; ".join(filter(None, [self.fields.get("load_errors"), error]))
+                print(f"  Seite lädt noch ({attempt}/{config.MAX_TRIES_TIMEOUT}), warte ...")
+
     def screenshot(self, moment):
         directory = self.run_dir / "screenshots"
         directory.mkdir(exist_ok=True)
@@ -248,6 +263,7 @@ class Session:
         if event is None:
             print(f"  Kein useractioncomplete innerhalb von {config.USERACTIONCOMPLETE_TIMEOUT} s; wird trotzdem ausgelesen"
                   " und als „kein useractioncomplete“ gespeichert. V4 wird auf dem Snapshot nach dem Reload berechnet.")
+        self.wait_until_responsive(f"after {kind}")
         self.screenshot("after_closing")
         self.snapshots[f"after_{kind}"] = self.capture.snapshot(f"after_{kind}")
         output.show(describe(f"nach {'Ablehnen' if kind == 'reject' else 'Akzeptieren'}",
@@ -255,6 +271,7 @@ class Session:
         time.sleep(config.SLEEP_TIME_REFRESH)
         self.reload()
         time.sleep(config.SLEEP_TIME_CMP_WAIT)
+        self.wait_until_responsive(f"after {kind} reload")
         self.snapshots[f"after_{kind}_reload"] = self.capture.snapshot(f"after_{kind}_reload")
         output.show(describe("nach Reload", self.snapshots[f"after_{kind}_reload"]))
 

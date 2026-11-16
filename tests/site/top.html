@@ -10,6 +10,8 @@
   // @iabtechlabtcf/core 1.5.22 (test GVL): no consent before and after rejecting, purposes 1-11 +
   // vendors 755, 793 after accepting. ?reload_after_choice=1 reloads the page right after the choice, as many
   // CMPs do (docs/entscheidungen.md, E2). The choice survives the reload in localStorage.
+  // ?reload_after_choice=slow loads the page anew with ?delay=12: the server answers only after 12 s,
+  // longer than the page load timeout (as wetteronline.de and tagesspiegel.de after accepting).
   // ?verstoss=... makes the banner violate on purpose, for a test run of the crosscheck (Phase 10):
   //   v2n        no way to reject (only "Alle akzeptieren")             -> code n, V2
   //   v4streng   after rejecting all purposes 1-11, but no vendor       -> V4 strict without vendor consent
@@ -58,6 +60,8 @@
       document.getElementById("banner").style.display = "none";
       fire();
       if (location.search.indexOf("reload_after_choice=1") >= 0) setTimeout(function () { location.reload(); }, 200);
+      if (location.search.indexOf("reload_after_choice=slow") >= 0 && location.search.indexOf("delay=") < 0)
+        setTimeout(function () { location.href = location.href + "&delay=12"; }, 200);
     };
   })();
 </script>

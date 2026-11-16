@@ -7,6 +7,7 @@ browser). The clicks happen here, in the test script, never in semi_automatic.py
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -15,14 +16,17 @@ import semi_automatic  # noqa: E402
 from selenium.webdriver.common.by import By  # noqa: E402
 
 URL = "http://localhost:8001/top.html?reload_after_choice=1"
+SLOW_URL = "http://localhost:8001/top.html?reload_after_choice=slow"   # loads anew for 12 s after the choice
 CMP_LIST = {"lastUpdated": "test", "cmps": {"300": {"id": 300, "name": "Google LLC"}}}
 drivers = []
 
 
-def click(element_id):
-    """An answer that first clicks on the test site (as the person would), then presses Enter."""
+def click(element_id, pause=0):
+    """An answer that first clicks on the test site (as the person would), then presses Enter,
+    after `pause` seconds (a person needs a moment; a slow page is then already loading anew)."""
     def act():
         drivers[-1].find_element(By.ID, element_id).click()
+        time.sleep(pause)
         return ""
     return act
 
@@ -36,9 +40,9 @@ def scripted(answers):
     return ask
 
 
-def run(ctx, role, answers, linked_id=None):
+def run(ctx, role, answers, linked_id=None, url=URL):
     semi_automatic.ask = scripted(answers)
-    status = semi_automatic.examine(ctx, {"domain": "localhost", "url": URL}, role, linked_id)
+    status = semi_automatic.examine(ctx, {"domain": "localhost", "url": url}, role, linked_id)
     assert not answers, f"unused answers: {answers}"
     return status
 
@@ -68,6 +72,10 @@ def main():
             print("\n##### Code n: only an accept session")
             run(ctx, "primary", ["j", "j", "n", "?", "n", "n", "", click("accept"), "Alle akzeptieren",
                                  "keine Ablehnen-Schaltfläche"])
+            print("\n##### Code r on a page that loads slowly after the choice (renderer timeout)")
+            assert run(ctx, "primary", ["j", "n", "n", "1", "", click("reject", 1), "Ablehnen", "",
+                                        "j", click("accept", 1)], url=SLOW_URL) == "done"
+            print("   load_errors:", [r[0] for r in conn.execute("SELECT load_errors FROM session ORDER BY started_at")])
             print("\n##### Code b: no banner after 3 reloads")
             run(ctx, "primary", ["n", "n", "n", "n", ""])
             first = conn.execute("SELECT id FROM examination WHERE role = 'primary' ORDER BY started_at").fetchone()[0]

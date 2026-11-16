@@ -8,9 +8,11 @@ against which tests/check_capture.py compares what capture.py saw.
 import json
 import sys
 import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 SITE_DIR = Path(__file__).resolve().parent / "site"
 LOG_LOCK = threading.Lock()
@@ -31,12 +33,18 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        delay = parse_qs(urlsplit(self.path).query).get("delay")
+        if delay:
+            time.sleep(float(delay[0]))   # a page that loads slowly (?delay=seconds)
         if self.path.startswith("/px"):
             self.record()
             self.send_response(204)
             self.end_headers()
             return
-        super().do_GET()
+        try:
+            super().do_GET()
+        except BrokenPipeError:
+            pass   # the browser gave up waiting for a slow page
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
