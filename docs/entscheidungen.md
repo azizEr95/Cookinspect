@@ -137,3 +137,14 @@ Statt an zwei Macs mit zwei Datenbanken und Zusammenführen arbeiten beide Perso
 - Kein Weitergeben von Dateien, kein `merge_databases.py` (bleibt im Code, nur falls doch an zwei Macs gemessen wird).
 - Alle Messungen laufen mit demselben Browser, derselben IP und demselben Gerät; das schließt Unterschiede zwischen zwei Macs als Ursache von Abweichungen in der Gegenprüfung aus.
 - Blinde Gegenprüfung: Die Ergebnisse der anderen Person liegen in derselben Datenbank und unter `data/`. Die Blindheit beruht deshalb auf einer Regel (README, „Zwei Personen an einem Mac“): vor der eigenen Gegenprüfung kein `evaluate`, kein `crosscheck evaluate`, kein Blick in die Datenbank, in `selection.json`, in `data/evaluation-*` oder in die Lauf-Ordner und Bildschirmfotos der anderen Person; Gegenprüfung in einem neuen Terminalfenster. Die Lauf-Ordner tragen das Kürzel im Namen (`data/semi-automatic-<Zweck>-<Kürzel>-<Zeit>/`), eine weitere Trennung im Code gibt es nicht.
+
+## E11 (2026-11-16): Halbautomatischer Teil nur an der Hälfte der TCF-Seiten
+
+Der halbautomatische Modus (V2–V4) läuft nur an den 126 Seiten, die `split_sites.py` der Person `ae` zugeteilt hat, nicht an allen 251 TCF-Seiten des Messlaufs. Die 125 Seiten von `xy` werden nicht halbautomatisch geprüft. `xy` macht die blinde Gegenprüfung (V-C) an den ausgewählten Seiten von `ae`.
+
+- Grund: Zeitaufwand. Eine Seite braucht im Mittel 3–5 Minuten Handarbeit (gemessen am 16.11. an den ersten 47 Seiten); alle 251 Seiten wären etwa 15–20 Stunden.
+- Die Hälfte ist keine willkürliche Auswahl: `split_sites.py` verteilt innerhalb jeder CMP die Seiten nach Tranco-Rang abwechselnd. Die 126 Seiten sind damit eine systematische, nach CMP geschichtete Stichprobe ohne Zufall; Rangverteilung und CMP-Mischung entsprechen fast der Gesamtheit. 20 der 23 CMPs sind dabei; es fehlen drei CMPs mit je einer Seite (CMP-IDs 14, 229, 382).
+- 126 Seiten sind mehr als doppelt so viele wie Mattes .de-Basis (56 TCF-Seiten, Tab. V). Matte prüfte aber alle 560 TCF-Seiten der 6 TLDs halbautomatisch (V-B); die Stichprobe ist eine Abweichung (`docs/abweichungen.md`).
+- Nenner: V1 und die Weitergabe vor der Wahl kommen weiter aus dem automatischen Modus (alle TCF-Seiten). V2–V4 beziehen sich nur auf die 126 Seiten (V3 und V4 ohne `n`, `b`, `x`). Im Paper werden beide Nenner genannt.
+- Die Gegenprüfung (Auswahl pro CMP mit Verstoß, Neuprüfung aller Seiten der CMP bei Abweichung) bezieht sich nur auf die Seiten der Stichprobe. Neu geprüft werden nur Seiten, die schon geprüft wurden.
+- Die Prüfungen vom 16.11. vor zwei Korrekturen am Werkzeug (Commits 83725f8: Renderer-Timeout nach dem Klick, e5f16f9: TC-String mit Leerzeichen) brachen ab und wurden wiederholt; abgebrochene Prüfungen haben keinen Status und zählen in der Auswertung nicht.
