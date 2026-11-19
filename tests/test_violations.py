@@ -352,6 +352,14 @@ def test_selection_takes_clean_sites_of_other_cmps_if_needed():
         ("a.de", "Verstoß"), ("f.de", "unauffällig")]
 
 
+def test_selection_counts_cookiewalls_as_v2():
+    clean = {"after_reject": phase(tc()), "after_accept": phase(tc({1}, {10}))}
+    sites = {s["domain"]: s for s in [site("w.de", 6, {"outcome": "w"}), site("c.de", 6, clean)]}
+    chosen = crosscheck.select(sites, random.Random(1))
+    assert [(s["domain"], kind, selected_as) for s, kind, selected_as in chosen] == [
+        ("w.de", "V2", "Verstoß"), ("c.de", "V2", "unauffällig")]
+
+
 def test_crosscheck_by_the_other_person():
     assert crosscheck.other_operator("ae", ["ae", "xy"]) == "xy"
 
