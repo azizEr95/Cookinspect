@@ -73,11 +73,11 @@ Beide Personen nutzen denselben Mac, denselben Nutzer und dieselbe Datenbank `da
    ```
    Innerhalb jeder CMP werden die Seiten nach Rang abwechselnd verteilt. So sieht jede Person jede CMP, und die Aufteilung ist ohne Zufall reproduzierbar. Ergebnis: `site_assignment.csv` (wer prüft welche Seite zuerst) und `site_assignment.json` (Prüfsumme von `tcf_sites.csv`, Personen, Regel).
 3. **Automatischer Modus** für **alle** Seiten, einmal (README, Schritt 3).
-4. **Halbautomatischer Modus**, nur `ae` mit den eigenen Seiten aus `site_assignment.csv` (Stichprobe, `docs/entscheidungen.md` E11):
+4. **Halbautomatischer Modus**, jede Person mit ihrem Kürzel und nur ihren Seiten aus `site_assignment.csv`:
    ```sh
    venv/bin/python run_list.py semi-automatic data/prefilter-messung-<Zeit>/site_assignment.csv --operator ae --purpose messung
    ```
-   Die Seiten von `xy` werden nicht halbautomatisch geprüft; `xy` macht die Gegenprüfung. Das Terminal führt durch Anhang D und fragt die Codes ab. Abbrechen mit Ctrl+C ist jederzeit möglich; beim nächsten Start werden fertige Seiten übersprungen. Die Bildschirmfotos liegen in `data/semi-automatic-messung-<Kürzel>-<Zeit>/screenshots/`.
+   (Person `xy` entsprechend mit `--operator xy`.) Das Terminal führt durch Anhang D und fragt die Codes ab. Abbrechen mit Ctrl+C ist jederzeit möglich; beim nächsten Start werden fertige Seiten übersprungen. Die Bildschirmfotos liegen in `data/semi-automatic-messung-<Kürzel>-<Zeit>/screenshots/`.
 5. **Gegenprüfung** auswählen, blind prüfen, auswerten, neu prüfen: README, Schritte 5–8.
 
 **Regel für die blinde Gegenprüfung:** In der gemeinsamen Datenbank und unter `data/` stehen auch die Ergebnisse der anderen Person. Bis die eigene Gegenprüfung fertig ist, gilt für jede Person:

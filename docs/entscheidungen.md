@@ -140,6 +140,8 @@ Statt an zwei Macs mit zwei Datenbanken und Zusammenführen arbeiten beide Perso
 
 ## E11 (2026-11-16): Halbautomatischer Teil nur an der Hälfte der TCF-Seiten
 
+**Ersetzt durch E12 (2026-11-19):** `xy` prüft die eigene Hälfte doch, es werden alle TCF-Seiten halbautomatisch geprüft.
+
 Der halbautomatische Modus (V2–V4) läuft nur an den 126 Seiten, die `split_sites.py` der Person `ae` zugeteilt hat, nicht an allen 251 TCF-Seiten des Messlaufs. Die 125 Seiten von `xy` werden nicht halbautomatisch geprüft. `xy` macht die blinde Gegenprüfung (V-C) an den ausgewählten Seiten von `ae`.
 
 - Grund: Zeitaufwand. Eine Seite braucht im Mittel 3–5 Minuten Handarbeit (gemessen am 16.11. an den ersten 47 Seiten); alle 251 Seiten wären etwa 15–20 Stunden.
@@ -148,3 +150,12 @@ Der halbautomatische Modus (V2–V4) läuft nur an den 126 Seiten, die `split_si
 - Nenner: V1 und die Weitergabe vor der Wahl kommen weiter aus dem automatischen Modus (alle TCF-Seiten). V2–V4 beziehen sich nur auf die 126 Seiten (V3 und V4 ohne `n`, `b`, `x`). Im Paper werden beide Nenner genannt.
 - Die Gegenprüfung (Auswahl pro CMP mit Verstoß, Neuprüfung aller Seiten der CMP bei Abweichung) bezieht sich nur auf die Seiten der Stichprobe. Neu geprüft werden nur Seiten, die schon geprüft wurden.
 - Die Prüfungen vom 16.11. vor zwei Korrekturen am Werkzeug (Commits 83725f8: Renderer-Timeout nach dem Klick, e5f16f9: TC-String mit Leerzeichen) brachen ab und wurden wiederholt; abgebrochene Prüfungen haben keinen Status und zählen in der Auswertung nicht.
+
+## E12 (2026-11-19): Alle TCF-Seiten halbautomatisch, aufgeteilt auf zwei Personen
+
+`xy` prüft die eigenen 125 Seiten aus `site_assignment.csv` doch halbautomatisch. Damit sind alle 251 TCF-Seiten des Messlaufs halbautomatisch geprüft, wie bei Matte (V-B), aber aufgeteilt auf zwei Personen (Matte: eine Person; `docs/abweichungen.md`). E11 gilt nicht mehr.
+
+- `ae` hat die eigenen 126 Seiten vom 16. bis 18.11. geprüft, `xy` prüft die eigenen 125 Seiten am 19. und 20.11. Der automatische Modus lief am 16.11.; der zeitliche Abstand wird im Paper genannt.
+- Gegenprüfung wie Matte V-C, aber in beide Richtungen: `crosscheck select --operators ae,xy` wählt aus beiden Hälften aus, jede Person prüft blind die Auswahl aus den Seiten der anderen. `w` zählt bei der Auswahl für V2 als Verstoß (Commit 62d3620).
+- `crosscheck select` läuft erst, wenn beide Hälften fertig sind. Die Auswahl vom 18.11. (`data/crosscheck-select-messung-2026-11-18--13-46-45`, 2 Seiten, nur aus der Hälfte von `ae` und ohne die `w`-Regel) ist verworfen und wird nicht benutzt.
+- boersennews.de (Hälfte von `xy`) verbietet seit dem Vorfilter das Laden per robots.txt und wird nicht gemessen. Trichter 251 TCF-Seiten, V1 auf 250, V2–V4 auf höchstens 250; die Auswertung nennt solche Seiten unter Tab. II.

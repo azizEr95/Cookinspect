@@ -37,7 +37,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - Die ersten N Domains mit Endung .de (N konfigurierbar, Standard 1000), analog zu Matte (1000 pro TLD).
 - Vorfilter mit Trichter: Domains → erreichbar und von robots.txt erlaubt → mit TCF. Vergleichswert Matte für .de (Tab. II): 1000 Domains → 881 erreichbar → 56 mit TCF-Banner (6,4 %).
 - TCF-Erkennung (analog Matte, S. 5): Nach dem Laden und weiteren 3 s ist `__tcfapi` vorhanden und `ping` antwortet.
-- Halbautomatischer Teil: Matte prüfte alle TCF-Seiten der ausgewählten TLDs (V-B: 560 Seiten). Wir prüfen aus Zeitgründen nur die Hälfte der TCF-Seiten des Messlaufs, die `split_sites.py` der Person `ae` zuteilt (126 von 251; nach CMP geschichtet, ohne Zufall; `docs/entscheidungen.md` E11). Der Parameter für eine Obergrenze (`SEMI_AUTOMATIC_LIMIT`) bleibt für Tests drin, ist standardmäßig aber aus.
+- Halbautomatischer Teil: wie bei Matte alle TCF-Seiten aus den ausgewählten Domains (Matte V-B: alle 560 TCF-Seiten der ausgewählten TLDs, keine feste Zahl), aufgeteilt auf zwei Personen (`split_sites.py`: innerhalb jeder CMP nach Rang abwechselnd; `docs/entscheidungen.md` E12). Der Parameter für eine Obergrenze (`SEMI_AUTOMATIC_LIMIT`) bleibt für Tests drin, ist standardmäßig aber aus.
 
 ## Ablauf
 
@@ -84,7 +84,7 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
 
-- `ae` prüft die Stichprobe (E11), `xy` macht die blinde Gegenprüfung. Jedes Ergebnis wird mit dem Kürzel der Person gespeichert, nichts wird überschrieben.
+- Die beiden Personen teilen die Seiten auf (`split_sites.py`, je etwa die Hälfte, E12). Jede Person prüft blind eine Stichprobe der Seiten der anderen. Jedes Ergebnis wird mit dem Kürzel der Person gespeichert, nichts wird überschrieben.
 - Am gemeinsamen Mac beruht die Blindheit auf einer Regel: Vor der eigenen Gegenprüfung startet die prüfende Person kein `evaluate` und sieht weder Ergebnisse noch Bildschirmfotos der anderen Person (README).
 - Betrifft V4 und V2. Pro CMP mit Verstoß: eine verstoßende Seite und gleich viele unauffällige Seiten. Die andere Person prüft sie blind, ohne das erste Ergebnis zu kennen.
 - Bei Abweichung zählt das mildere Ergebnis, **und** alle Seiten dieser CMP werden neu geprüft.

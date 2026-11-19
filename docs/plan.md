@@ -2,7 +2,7 @@
 
 Einstieg für jede neue Sitzung, auch für Claude Code in einem neuen Kontext. Zuerst `CLAUDE.md` lesen (Regeln, Definitionen), dann diese Datei (was fertig ist, was als Nächstes kommt). Begründungen stehen in `docs/entscheidungen.md`, Abweichungen von Matte und vom alten Cookinspect in `docs/abweichungen.md`, die Prüfung der Crawl-Umgebung in `docs/crawl-nutzer.md`.
 
-Stand: 2026-11-15, Branch `tcf22-port`, Phase 10 fertig, Vorab-Lauf fertig, Phase 11 fertig bis auf die Zahlen im Methodenteil. Nichts gepusht.
+Stand: 2026-11-19, Branch `tcf22-port`, Phasen 0–11 fertig (im Methodenteil fehlen noch die Zahlen), Vorab-Lauf fertig, Messlauf läuft (halbautomatisch `xy`, danach Gegenprüfung und Auswertung). Nichts gepusht.
 
 ## Arbeitsweise (Kurzfassung aus CLAUDE.md)
 
@@ -24,13 +24,11 @@ Stand: 2026-11-15, Branch `tcf22-port`, Phase 10 fertig, Vorab-Lauf fertig, Phas
 | 4 | Decoder, GVL der String-Version, CMP-Liste | fertig | `cb2227c`, `226d7e0` |
 | 5 | SQLite-Schema, `database.py`, Zusammenführen | fertig | `d850f00`, `f28b406` |
 | 6 | Automatischer Modus (V1, Weitergabe vorher, Cookiewall-Heuristik) | fertig | `d76561e` |
-| 7 | Halbautomatischer Modus (V2–V4), `run_list.py` als Einstieg | fertig, Test an 2–3 echten Seiten durch die Person offen | siehe `git log` |
-| **8** | **Verstoß-Logik und Auswertung** | **als Nächstes** | |
-| 9 | Unit-Tests vervollständigen | offen | |
-| 10 | Testlauf an 10 GQ3LK-Seiten, beide Modi | fertig (2026-11-15) | |
-| 11 | Doku (README, Abweichungen vervollständigen) | offen | |
-
-Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–5).
+| 7 | Halbautomatischer Modus (V2–V4), `run_list.py` als Einstieg | fertig | `91aa2a8`, `4b508c4`, `f816f4d`, `1fd5fce` |
+| 8 | Verstoß-Logik und Auswertung | fertig | `b5162fb`, `6115a01`, `0b97694`, `0ac27dd` |
+| 9 | Unit-Tests vervollständigen | fertig | `78978d8` |
+| 10 | Testlauf an 10 GQ3LK-Seiten, beide Modi, Gegenprüfung am Prüfstand | fertig (2026-11-15) | `801c338`, `13e8ad6` |
+| 11 | Doku (README, Abweichungen vervollständigen, Entwurf Methodenteil) | fertig | `17e95c4`, `31ff777`, `ff29e14`, `bd1b5e4` |
 
 ## Was es schon gibt (Dateien)
 
@@ -46,15 +44,15 @@ Restaufwand geschätzt: ca. 24–36 h (8: 11–15, 9: 4–6, 10: 4–6, 11: 3–
 | `decode/tcstring.mjs`, `decode/cli.mjs`, `decoder.py` | Decoder „TC-String rein, IDs als JSON raus“ (`@iabtechlabtcf/core` 1.5.22), Prüfungen pro String |
 | `consent_lists.py` | GVL nach `vendorListVersion` des Strings (v3/v2-Archiv), CMP-Liste pro Lauf, Prüfung der CMP-ID |
 | `schema.sql`, `database.py` | SQLite, nur Einfügen (Trigger), alle IDs in `tc_string_entry`; Datei pro Zweck |
-| `merge_databases.py` | Dateien beider Personen zusammenführen; warnt bei zwei Vorfilter-Messläufen |
+| `merge_databases.py` | Dateien beider Personen zusammenführen, nur falls doch an zwei Macs gemessen wird (E10); warnt bei zwei Vorfilter-Messläufen |
 | `split_sites.py` | Aufteilung der TCF-Seiten auf zwei Personen (`site_assignment.csv`) |
 | `automatic.py` | automatischer Modus: 2 Sitzungen, Snapshot „vorher“ nach Laden + 3 s |
 | `cookiewall.py` | Cookiewall-**Heuristik** (Zustimmen + Bezahlen im Dialog, contentpass) |
 | `semi_automatic.py` | halbautomatischer Modus: Anleitung nach Anhang D, Codes, Label, Bildschirmfotos, blinde Gegenprüfung, Fortsetzen |
 | `run_list.py` | gemeinsamer Einstieg: `run_list.py prefilter` bzw. `automatic` bzw. `semi-automatic` |
-| `tests/` | 81 Unit-Tests (`venv/bin/python -m pytest -q`); Live-Prüfungen `check_capture.py` (lokaler Prüfstand), `check_capture_real.py` |
+| `tests/` | 153 Unit-Tests (`venv/bin/python -m pytest -q`); Live-Prüfungen `check_capture.py` (lokaler Prüfstand), `check_capture_real.py` |
 
-`extract_results.py` ist entfernt (ersetzt durch `evaluate.py`). README ist veraltet (PostgreSQL, `run.sh`).
+`extract_results.py` ist entfernt (ersetzt durch `evaluate.py`).
 
 ## Phase 7: halbautomatischer Modus (fertig)
 
@@ -116,23 +114,23 @@ Ergebnis (2026-11-15):
 
 ## Phase 11: Doku
 
-README neu (Einrichtung, alle Befehle, Ablauf mit zwei Macs, Regel für die blinde Gegenprüfung): fertig. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Methodenteil: Entwurf in `docs/methodenteil.md`, Platzhalter für Zahlen, Zeitraum, Standort und Versionen.
+README neu (Einrichtung, alle Befehle, zwei Personen an einem Mac (E10), Regel für die blinde Gegenprüfung): fertig. `docs/abweichungen.md` vervollständigt (F1–F8 und Abweichungen Paper ↔ Code, gegen 948a85f geprüft). Methodenteil: Entwurf in `docs/methodenteil.md`, Platzhalter für Zahlen, Zeitraum, Standort und Versionen.
 
 ## Offene Punkte außerhalb der Phasen
 
 - Vorab-Lauf 2026-11-09: Vorfilter fertig (1000 → 890 geladen → 250 TCF, `data/prefilter-vorab-2026-11-09--08-54-51`). Automatischer Modus brach bei Seite 92 (skyscanner.de) ab: chromedriver lieferte für ein iframe `{}` statt eines Elements. Korrigiert in `capture.py` und `cookiewall.py`; ein unerwarteter Fehler beendet seither nur die Seite (`aborted`, Fehler in `note`), nicht den Lauf. Seiten 1–91 stammen aus dem Lauf mit Commit 00e058e, Seiten 92–250 aus einem neuen Lauf mit der Korrektur (Liste `data/prefilter-vorab-2026-11-09--08-54-51/tcf_sites_ab_92.csv`).
 - Auswertung angepasst (2026-11-15): V1 in Tab. III mit drei Vergleichswerten von Matte (.de 16/56 Tab. V, 6 TLDs 65/560 Tab. IV a, alle TLDs 141/1426 Tab. III) und zusätzlich mit Mattes Nenner (ohne TC-String = kein Verstoß; vorab 0/250); Satz zur Untergrenze unter Tab. II (urllib 3, Original-Cookinspect 9 Seiten); neue Details: berechtigtes Interesse vor der Wahl (mindestens eine / beide Sitzungen, Zwecke 3–6 getrennt; vorab 81/192, keine Seite mit 3–6) und Liste Vendor-Consent ohne Zweck-Consent (vorab 7 Seiten, 6 davon CMP 31). Neue Auswertung: `data/evaluation-vorab-2026-11-15--15-05-01`.
-- Messlauf (2026-11-15/16): Vorfilter 1000 → 887 geladen → 251 TCF (`data/prefilter-messung-2026-11-15--15-44-09`), automatischer Modus fertig (250 Seiten, boersennews.de inzwischen von robots.txt verboten). Halbautomatisch nur die 126 Seiten von `ae` (E11, 2026-11-16); dabei zwei Fehler im Werkzeug behoben (83725f8 Renderer-Timeout nach dem Klick, e5f16f9 TC-String mit Leerzeichen).
+- Messlauf (2026-11-15 bis 20): Vorfilter 1000 → 887 geladen → 251 TCF (`data/prefilter-messung-2026-11-15--15-44-09`), automatischer Modus fertig (250 Seiten, boersennews.de seit dem Vorfilter von robots.txt verboten). Halbautomatisch: `ae` 126 Seiten fertig (16.–18.11.), `xy` 125 Seiten (19./20.11.), alle TCF-Seiten (E12, ersetzt E11). Dabei zwei Fehler im Werkzeug behoben (83725f8 Renderer-Timeout nach dem Klick, e5f16f9 TC-String mit Leerzeichen). **Verworfen:** die Auswahl `data/crosscheck-select-messung-2026-11-18--13-46-45` (nur Hälfte `ae`, ohne `w`-Regel); `crosscheck select` erst, wenn beide Hälften fertig sind.
 - Ein Mac für beide Personen (E10, 2026-11-15): Personen nur über `--operator`, kein Zusammenführen; Blind-Regel in README. Gegenprüfung am Prüfstand: Phase 10.
 - Fortsetzen unterbrochener Läufe (E9, 2026-11-09): `--resume <Lauf-Ordner>` für Vorfilter und automatischen Modus (`resume.py`, Tabelle `run_part`, Schema 4); Unit-Tests in `tests/test_resume.py`, echter Test mit Ctrl+C an 8 Domains und 2 TCF-Seiten ohne Fehler.
-- Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`. Offen: macOS-Nutzer der zweiten Person eintragen und committen. Danach Vorab-Lauf des Vorfilters starten (macht der Nutzer selbst).
-- Cookiewalls: Nach dem Vorab-Lauf entscheiden, ob die Forschungsfrage erweitert wird. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
+- Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`; ein Eintrag reicht, weil beide Personen am selben Mac messen (E10).
+- Cookiewalls: Die Auswertung weist beide Varianten aus (`w` ausgeschlossen / `w` als V2); bei der Auswahl für die Gegenprüfung zählt `w` zu V2 (62d3620). Offen bleibt, ob Cookiewalls in die Forschungsfrage kommen. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
 - Lizenz von Cookinspect mit Matte klären (keine Lizenzdatei) vor einer Veröffentlichung.
 - E4: Cookie Glasses (GPLv3) auf TCF v2.2/v2.3 erweitern, mit kurzem Nutzertest (5–10 Personen); vorgezogen auf „nach Phase 8 und Vorab-Lauf“, Details offen. Decoder ist dafür eigenständig gebaut.
 
 ## Wichtige Befunde bisher
 
-- Kanal 2 ist fast nie messbar (vor der Wahl nur wetteronline.de mit fremdem iframe).
+- Kanal 2 ist oft nicht messbar: im Vorab-Lauf vor der Wahl 60,8 % (152/250) „nicht messbar“ (kein fremdes iframe, über das gefragt werden kann).
 - amazon.de (CMP 376) liefert leeres `tcData` (`empty_tc_data`), eigener Banner mit „Ablehnen“.
 - mobile.de sperrt per Akamai Bot Manager (Status 200, leere Seite).
 - google.de: urllib verbietet wegen `Disallow: /?` → `/` (Normalisierung), Protego erlaubt.

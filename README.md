@@ -39,7 +39,7 @@ Alle Befehle laufen über `run_list.py` (oder direkt über das genannte Skript).
 | 1. Vorfilter (Trichter wie Matte Tab. II) | `venv/bin/python run_list.py prefilter lists/tranco_GQ3LK_de_top1000.csv --purpose messung` | `data/prefilter-messung-<Zeit>/`: `funnel.md`, `tcf_sites.csv` |
 | 2. Aufteilung auf zwei Personen | `venv/bin/python split_sites.py data/prefilter-messung-<Zeit>/tcf_sites.csv ae xy` | `site_assignment.csv` |
 | 3. Automatischer Modus (V1, Weitergabe vor der Wahl) | `venv/bin/python run_list.py automatic data/prefilter-messung-<Zeit>/tcf_sites.csv --purpose messung` | alle Seiten; zwei Sitzungen pro Seite, nichts wird geklickt |
-| 4. Halbautomatischer Modus (V2–V4) | `venv/bin/python run_list.py semi-automatic data/prefilter-messung-<Zeit>/site_assignment.csv --operator ae --purpose messung` | nur die Seiten von `ae` (Stichprobe, `docs/entscheidungen.md` E11); das Terminal führt durch Anhang D; Bildschirmfotos in `data/semi-automatic-messung-ae-<Zeit>/` |
+| 4. Halbautomatischer Modus (V2–V4) | `venv/bin/python run_list.py semi-automatic data/prefilter-messung-<Zeit>/site_assignment.csv --operator ae --purpose messung` | jede Person nur ihre Seiten aus `site_assignment.csv` (`xy` entsprechend mit `--operator xy`); das Terminal führt durch Anhang D; Bildschirmfotos in `data/semi-automatic-messung-ae-<Zeit>/` |
 | 5. Gegenprüfung auswählen | `venv/bin/python run_list.py crosscheck select --operators ae,xy --purpose messung` | `data/crosscheck-select-messung-<Zeit>/crosscheck-<Kürzel>.csv` |
 | 6. Blinde Gegenprüfung | `venv/bin/python run_list.py semi-automatic <…>/crosscheck-xy.csv --operator xy --role crosscheck --purpose messung` | die andere Person prüft, ohne das erste Ergebnis zu sehen |
 | 7. Gegenprüfung auswerten | `venv/bin/python run_list.py crosscheck evaluate --purpose messung` | `comparison.csv`, `recheck.csv` |
@@ -55,7 +55,7 @@ Der Vorab-Lauf (`--purpose vorab`) besteht nur aus Vorfilter (Schritt 1) und aut
 Beide Personen messen am selben Mac unter demselben macOS-Nutzer (`docs/entscheidungen.md`, E10), mit einer gemeinsamen Datenbank pro Zweck. Unterschieden werden sie nur über das Kürzel (`--operator ae` bzw. `--operator xy`). Nichts wird überschrieben: Messdaten und Labels werden nur eingefügt, jede Prüfung trägt das Kürzel der Person. Die Lauf-Ordner mit den Bildschirmfotos tragen das Kürzel im Namen (`data/semi-automatic-<Zweck>-<Kürzel>-<Zeit>/`).
 
 1. Vorfilter (Schritt 1), Aufteilung (Schritt 2) und automatischer Modus (Schritt 3) für **alle** Seiten, je einmal.
-2. Halbautomatischer Modus (Schritt 4), nur `ae` mit den eigenen Seiten aus `site_assignment.csv`. Die Seiten von `xy` werden nicht halbautomatisch geprüft (Stichprobe, `docs/entscheidungen.md` E11).
+2. Halbautomatischer Modus (Schritt 4), jede Person mit ihrem Kürzel und nur ihren Seiten aus `site_assignment.csv`.
 3. Gegenprüfung auswählen (Schritt 5). Jede Person nimmt nur ihre Datei `crosscheck-<Kürzel>.csv`. `selection.json` ist der Schlüssel und wird der prüfenden Person nicht gezeigt.
 4. Blinde Gegenprüfung (Schritt 6), jede Person mit ihrem Kürzel.
 5. Gegenprüfung auswerten (Schritt 7). Bei einer Abweichung zählt pro Verstoßart das mildere Ergebnis, und alle Seiten der CMP werden neu geprüft (Schritt 8).
