@@ -405,6 +405,33 @@ def format_reasons(counter):
     return "; ".join(f"{reason} ({n})" for reason, n in counter.most_common()) or "keine"
 
 
+MODE_NAMES = {"automatic": "automatischer Modus", "semi-automatic": "halbautomatischer Modus"}
+
+
+def robots_disallowed_after_prefilter(conn, purpose):
+    """Sites that robots.txt forbade only after the prefilter, so they were not measured in a mode:
+    {domain: [mode, ...]}. A site that was measured later in the same mode is not listed."""
+    rows = conn.execute("""
+        SELECT DISTINCT e.domain, r.mode FROM examination e JOIN run r ON r.id = e.run_id
+        WHERE e.status = 'robots_disallowed' AND r.purpose = ?
+          AND NOT EXISTS (SELECT 1 FROM examination d JOIN run dr ON dr.id = d.run_id
+                          WHERE d.domain = e.domain AND d.status = 'done' AND dr.mode = r.mode AND dr.purpose = r.purpose)
+        ORDER BY e.domain, r.mode""", (purpose,))
+    disallowed = {}
+    for row in rows:
+        disallowed.setdefault(row["domain"], []).append(row["mode"])
+    return disallowed
+
+
+def robots_disallowed_note(disallowed, funnel):
+    if not disallowed:
+        return ""
+    sites = "; ".join(f"{domain} ({', '.join(MODE_NAMES.get(m, m) for m in modes)})" for domain, modes in disallowed.items())
+    tcf = f" Die Nenner sind dort deshalb kleiner als die {funnel['protego']['tcf']} TCF-Seiten des Trichters." \
+        if funnel and funnel.get("protego") else ""
+    return (f"\n\nNach dem Vorfilter hat robots.txt das Laden verboten, deshalb nicht gemessen: {sites}.{tcf}")
+
+
 def write_evaluation(conn, purpose, out_dir, database_name=""):
     """Writes sites.csv, tables.md and tables.json to out_dir; returns the Markdown."""
     sites = site_data.load_sites(conn, v.RANKS, purpose)
@@ -427,7 +454,8 @@ def write_evaluation(conn, purpose, out_dir, database_name=""):
         f"# Auswertung ({purpose}, {database.now()})",
         f"{len(sites)} Seiten: {sum(1 for s in sites.values() if s['automatic'])} im automatischen Modus, "
         f"{len(semi_sites)} halbautomatisch mit gültigem Ergebnis. Datenbank: `{database_name}`.",
-        "## Tab. II: Trichter (Vergleich Matte, .de)", tab_ii_text,
+        "## Tab. II: Trichter (Vergleich Matte, .de)",
+        tab_ii_text + robots_disallowed_note(robots_disallowed_after_prefilter(conn, purpose), funnel),
         "## Tab. III: Verstöße (Vergleich Matte; in eckigen Klammern Mattes Werte: bei V1 wie in der Zelle "
         "angegeben, bei V2–V4 für die 6 TLDs des halbautomatischen Teils)", tab_iii_text,
         TAB_III_MAPPING,

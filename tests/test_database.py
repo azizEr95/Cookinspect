@@ -335,6 +335,24 @@ def test_evaluation_reads_the_database_and_takes_the_milder_crosscheck(conn):
     assert violations.v4(site["crosscheck"]["primary"], "lax")["purposes_after_reject"] == list(range(1, 12))
 
 
+def test_sites_forbidden_by_robots_after_the_prefilter_are_named(conn):
+    automatic_run = database.insert_run(conn, {**METADATA, "mode": "automatic"})
+    semi_run = database.insert_run(conn, METADATA)
+    for run_id in (automatic_run, semi_run):
+        database.finish_examination(conn, database.insert_examination(
+            conn, run_id, "boersennews.de", "https://www.boersennews.de", "automatic" if run_id == automatic_run
+            else "primary", "xy"), "robots_disallowed")
+    retried = database.insert_examination(conn, semi_run, "later.de", "https://www.later.de", "primary", "xy")
+    database.finish_examination(conn, retried, "robots_disallowed")
+    database.finish_examination(conn, database.insert_examination(
+        conn, semi_run, "later.de", "https://www.later.de", "primary", "xy"), "done")   # measured after all
+    disallowed = evaluate.robots_disallowed_after_prefilter(conn, "test")
+    assert disallowed == {"boersennews.de": ["automatic", "semi-automatic"]}
+    note = evaluate.robots_disallowed_note(disallowed, {"protego": {"tcf": 251}})
+    assert "boersennews.de (automatischer Modus, halbautomatischer Modus)" in note and "251 TCF-Seiten" in note
+    assert evaluate.robots_disallowed_note({}, None) == ""
+
+
 def test_evaluation_writes_csv_and_json(conn, tmp_path, monkeypatch):
     monkeypatch.setattr(evaluate, "gvl_for", lambda version, policy: None)
     run_id = database.insert_run(conn, METADATA)
