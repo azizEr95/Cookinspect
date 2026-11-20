@@ -78,9 +78,9 @@ Dieses Repo ist eine **Neuimplementierung nach dem Vorbild von Cookinspect (Matt
 - **Nenner für V3 und V4:** nur Seiten mit Ablehnmöglichkeit. Seiten mit `n`, `b` oder `x` fallen heraus (Matte S. 9: 508 von 560); `w` je nach Konfiguration (siehe Cookiewalls).
 - **Berechtigtes Interesse** nach Ablehnen getrennt erfassen, nicht als V4 zählen (`purpose.legitimateInterests`, besonders die Zwecke 3–6).
 - **Weitergabe an Dritte** (wie Matte, Abschnitt VIII-A): TC-Strings mit Zustimmung in Requests an Dritte getrennt ausweisen, (a) vor jeder Aktion und (b) nach Ablehnen.
-- **Cookiewalls** (Pay-or-OK): Ausgewertet wird erst, wenn die Daten des automatischen Crawls vorliegen. Davon hängt auch ab, ob die Forschungsfrage um Cookiewalls erweitert wird. Bis dahin:
+- **Cookiewalls** (Pay-or-OK): Die Forschungsfrage wird **nicht** um Cookiewalls erweitert (`docs/entscheidungen.md` E13). Sie kommen ins Paper als Befund, der die Ergebnisse einordnet (Ergebnisse und Diskussion).
   - Der automatische Modus erkennt und markiert Cookiewalls (Heuristik), der halbautomatische Modus markiert sie mit `cookiewall_seen` und, ohne kostenloses Ablehnen, mit `w`.
-  - Die Verstoß-Logik verdrahtet `w` nicht fest. Der Umgang ist konfigurierbar (z. B. „ausschließen“ oder „als V2 zählen“); bis zur Entscheidung werden beide Varianten ausgewiesen.
+  - Die Verstoß-Logik verdrahtet `w` nicht fest. Der Umgang ist konfigurierbar („ausschließen“ oder „als V2 zählen“). Im Paper stehen beide Varianten nebeneinander, keine gilt als Hauptwert.
 
 ## Gegenprüfung (Matte, Abschnitt V-C)
 

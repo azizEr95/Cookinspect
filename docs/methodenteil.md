@@ -17,4 +17,3 @@ Offen für die endgültige Fassung:
 
 - Zahlen: [N erreichbar], [N TCF].
 - Zeitraum, Standort, Chrome-Version und macOS-Version aus den Metadaten der Messläufe.
-- Ob die Cookiewalls (Pay-or-OK) als eigene Forschungsfrage erscheinen (Entscheidung nach dem Vorab-Lauf, CLAUDE.md).

@@ -124,7 +124,7 @@ README neu (Einrichtung, alle Befehle, zwei Personen an einem Mac (E10), Regel f
 - Ein Mac für beide Personen (E10, 2026-11-15): Personen nur über `--operator`, kein Zusammenführen; Blind-Regel in README. Gegenprüfung am Prüfstand: Phase 10.
 - Fortsetzen unterbrochener Läufe (E9, 2026-11-09): `--resume <Lauf-Ordner>` für Vorfilter und automatischen Modus (`resume.py`, Tabelle `run_part`, Schema 4); Unit-Tests in `tests/test_resume.py`, echter Test mit Ctrl+C an 8 Domains und 2 TCF-Seiten ohne Fehler.
 - Crawl unter dem normalen Nutzer (E8, 2026-11-09): `CRAWL_USERS = ("aziz",)`; ein Eintrag reicht, weil beide Personen am selben Mac messen (E10).
-- Cookiewalls: Die Auswertung weist beide Varianten aus (`w` ausgeschlossen / `w` als V2); bei der Auswahl für die Gegenprüfung zählt `w` zu V2 (62d3620). Offen bleibt, ob Cookiewalls in die Forschungsfrage kommen. Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark.
+- Cookiewalls: Die Auswertung weist beide Varianten aus (`w` ausgeschlossen / `w` als V2); bei der Auswahl für die Gegenprüfung zählt `w` zu V2 (62d3620). Im Test waren 4 von 5 TCF-Seiten Pay-or-OK; der Umgang mit `w` prägt V2–V4 stark. **Entschieden (E13, 2026-11-20):** keine eigene Forschungsfrage; Cookiewalls kommen als einordnender Befund in Ergebnisse und Diskussion, beide Varianten stehen im Paper nebeneinander, keine als Hauptwert.
 - Lizenz von Cookinspect mit Matte klären (keine Lizenzdatei) vor einer Veröffentlichung.
 - E4: Cookie Glasses (GPLv3) auf TCF v2.2/v2.3 erweitern, mit kurzem Nutzertest (5–10 Personen); vorgezogen auf „nach Phase 8 und Vorab-Lauf“, Details offen. Decoder ist dafür eigenständig gebaut.
 

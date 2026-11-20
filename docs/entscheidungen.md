@@ -159,3 +159,12 @@ Der halbautomatische Modus (V2–V4) läuft nur an den 126 Seiten, die `split_si
 - Gegenprüfung wie Matte V-C, aber in beide Richtungen: `crosscheck select --operators ae,xy` wählt aus beiden Hälften aus, jede Person prüft blind die Auswahl aus den Seiten der anderen. `w` zählt bei der Auswahl für V2 als Verstoß (Commit 62d3620).
 - `crosscheck select` läuft erst, wenn beide Hälften fertig sind. Die Auswahl vom 18.11. (`data/crosscheck-select-messung-2026-11-18--13-46-45`, 2 Seiten, nur aus der Hälfte von `ae` und ohne die `w`-Regel) ist verworfen und wird nicht benutzt.
 - boersennews.de (Hälfte von `xy`) verbietet seit dem Vorfilter das Laden per robots.txt und wird nicht gemessen. Trichter 251 TCF-Seiten, V1 auf 250, V2–V4 auf höchstens 250; die Auswertung nennt solche Seiten unter Tab. II.
+
+## E13 (2026-11-20): Cookiewalls keine eigene Forschungsfrage
+
+Die Forschungsfrage wird nicht um Cookiewalls (Pay-or-OK) erweitert. Cookiewalls kommen ins Paper als Befund, der die Ergebnisse einordnet (Ergebnisse und Diskussion). Beide Varianten, `w` ausgeschlossen und `w` als V2, stehen im Paper nebeneinander; keine gilt als Hauptwert.
+
+- Anlass: Im Messlauf bieten 53,4 % der TCF-Seiten (134/251) kein kostenloses Ablehnen (Code `w`). Der Umgang mit `w` verschiebt V2 von 0,9 % auf 54,9 % und „irgendein Verstoß“ deutlich (`data/evaluation-messung-2026-11-20--21-09-17`).
+- Rechtslage umstritten: Der EDPB hält Einwilligungen bei Cookiewalls für nicht freiwillig (Guidelines 05/2020, Rn. 39), die DSK hält Pur-Abo-Modelle unter Bedingungen für zulässig (Beschluss vom 22.03.2023). Ob `w` ein Verstoß ist, entscheiden wir deshalb nicht; ein Hauptwert würde genau das tun.
+- Die Nachmessung bleibt nah an Matte: Forschungsfrage, Verstöße V1–V4 und Methode bleiben wie dort; eine eigene Frage zu Cookiewalls bräuchte eine eigene Methode (z. B. Preise, Inhalt des Abos), die Matte nicht hat.
+- Technisch ändert sich nichts: Die Auswertung weist beide Varianten schon aus (`violations.COOKIEWALL_HANDLINGS`); bei der Auswahl für die Gegenprüfung zählt `w` weiter zu V2 (Commit 62d3620).
