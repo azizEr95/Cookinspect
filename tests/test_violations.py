@@ -136,6 +136,27 @@ def test_v3_either_with_matte_denominator():
     assert v.v3(label(settings=0), "either", matte_denominator=True)["value"] == v.NO
 
 
+def test_v3_only_purposes_as_matte_measured():
+    # Matte S. 7, IV-E: only pre-selected purposes count, with the denominator of all sites with r
+    assert v.v3(label(purposes_pre=0, vendors_pre=1), "purposes", matte_denominator=True)["value"] == v.NO
+    assert v.v3(label(purposes_pre=1, vendors_pre=0), "purposes", matte_denominator=True)["value"] == v.YES
+    assert v.v3(label(settings=0), "purposes", matte_denominator=True)["value"] == v.NO
+
+
+def test_any_violation_variants():
+    def r(v2_exclude=v.NA, v2_count=v.NA, level=None, v3_purposes=v.NO, v3_either=v.NO):
+        return {"v1": {"value": v.NO}, "v4_matte": {"value": v.NO}, "v2_exclude": {"value": v2_exclude},
+                "v2_count_as_v2": {"value": v2_count, "level": level},
+                "v3_purposes_matte": {"value": v3_purposes}, "v3_either_matte": {"value": v3_either}}
+    sites = {"w.de": r(v2_count=v.YES, level="gar nicht (Cookiewall)"),
+             "vendors.de": r(v.NO, v.NO, "1. Ebene", v3_either=v.YES),
+             "ok.de": r(v.NO, v.NO, "1. Ebene")}
+    assert evaluate.any_violation_figure(sites, "exclude", "purposes")["text"] == "0,0 % (0/2)"
+    assert evaluate.any_violation_figure(sites, "exclude", "either")["text"] == "50,0 % (1/2)"
+    assert evaluate.any_violation_figure(sites, "count_as_v2", "purposes")["text"] == "33,3 % (1/3)"
+    assert evaluate.any_violation_figure(sites, "count_as_v2", "either")["text"] == "66,7 % (2/3)"
+
+
 # --- V4
 
 def test_v4_strict_matte_lax():
@@ -248,6 +269,16 @@ def test_latest_correction_counts():
     exams = [examination("p", "primary", "1"), examination("c1", "correction", "2", {"outcome": "n"}, correction_of="p"),
              examination("c2", "correction", "3", {"outcome": "x"}, correction_of="p")]
     assert counts(exams)[:2] == ("c2", "c2")
+
+
+def test_crosscheck_of_a_corrected_first_examination_is_compared_with_the_correction():
+    # focus.de: first examination r on the 2nd layer, crosscheck w, then the first one corrected to w
+    exams = [examination("p", "primary", "1", {"reject_level": 2, **RESPECTED}),
+             examination("k", "crosscheck", "2", {"outcome": "w"}, operator="xy", crosscheck_of="p"),
+             examination("c", "correction", "3", {"outcome": "w"}, correction_of="p")]
+    v2_id, v4_id, info = counts(exams)
+    assert (v2_id, info["crosscheck"]["differs"], info["warnings"]) == ("c", False, [])
+    assert info["crosscheck"]["primary"]["corrects"] == "p"
 
 
 def test_recheck_replaces_all_earlier_examinations():
@@ -382,7 +413,10 @@ def test_tables_with_matte_mapping(monkeypatch):
     assert figures["v1"]["text"] == "33,3 % (1/3)" and figures["v1_all"]["hits"] == 1
     assert figures["v4"]["text"] == "50,0 % (1/2)"
     assert [figures["v2"][h]["text"] for h in v.COOKIEWALL_HANDLINGS] == ["0,0 % (0/2)", "33,3 % (1/3)"]
-    assert figures["any"]["text"] == "33,3 % (1/3)"
+    # w excluded also from the denominator; counted as V2, c.de (w) is a violation too
+    assert figures["any"]["exclude_purposes"]["text"] == "50,0 % (1/2)"
+    assert figures["any"]["count_as_v2_purposes"]["text"] == "66,7 % (2/3)"
+    assert "| V3 nur Zwecke (wie Matte) | 50,0 % (1/2) | 66,7 % (2/3) |" in text
     assert "[Matte 5,3 % (27/508)]" in text
     assert figures["v1_matte_denominator"]["text"] == "33,3 % (1/3)"
     assert ("mit Mattes Nenner 33,3 % (1/3) [Matte .de 28,6 % (16/56), Tab. V, S. 10; 6 TLDs 11,6 % (65/560), "

@@ -13,7 +13,7 @@ Per site:
 
 Which semi-automatic examination counts (Matte V-C, CLAUDE.md, Gegenprüfung):
   1. a correction replaces the examination it refers to (the latest correction if there are
-     several)
+     several); a crosscheck of a corrected first examination is compared with the correction
   2. a recheck replaces all earlier examinations of the site (the latest recheck)
   3. otherwise the primary examination and its blind crosscheck, decided separately for V2 and
      for V4 (the crosscheck is done separately for both, Matte V-C): the MILDER classification
@@ -162,8 +162,10 @@ def effective_examination(examinations, ranks):
         info["warnings"].append(f"{len(primaries)} fertige erste Prüfungen "
                                 f"({', '.join(sorted({p['operator'] for p in primaries}))}), die jüngste zählt")
     primary = primaries[-1]
-    crosschecks = [e for e in examinations if e["role"] == "crosscheck" and e["crosscheck_of"] == primary["id"]]
-    others = [e for e in examinations if e["role"] == "crosscheck" and e["crosscheck_of"] != primary["id"]]
+    # a crosscheck refers to the first examination; if that was corrected, it is compared with the correction
+    primary_ids = {primary["id"], primary.get("corrects")} - {None}
+    crosschecks = [e for e in examinations if e["role"] == "crosscheck" and e["crosscheck_of"] in primary_ids]
+    others = [e for e in examinations if e["role"] == "crosscheck" and e["crosscheck_of"] not in primary_ids]
     if others:
         info["warnings"].append(f"{len(others)} Gegenprüfung(en) einer älteren ersten Prüfung, nicht berücksichtigt")
     if not crosschecks:

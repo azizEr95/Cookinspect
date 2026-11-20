@@ -58,6 +58,7 @@ def evaluate_site(site):
         "vendors_without_purpose_before": v.vendors_without_purpose_before(automatic),
         "v3_purposes": v.v3(label, "purposes"),
         "v3_vendors": v.v3(label, "vendors"),
+        "v3_purposes_matte": v.v3(label, "purposes", matte_denominator=True),
         "v3_either_matte": v.v3(label, "either", matte_denominator=True),
         "v3_cookiewall": v.v3_cookiewall(label),
         "li_after_reject": v.li_after_reject(semi, gvl_for),
@@ -187,12 +188,13 @@ def tab_iii(results, semi_sites):
     lax_only = sum(1 for r in results.values() if r["v4_lax"]["value"] == v.YES and r["v4_matte"]["value"] != v.YES)
     v4_some.update(hits=lax_only, text=percent(lax_only, v4_some["denominator"]))
     v2 = {h: figure(semi_sites, f"v2_{h}") for h in v.COOKIEWALL_HANDLINGS}
-    v3 = figure(results, "v3_either_matte")
-    any_main = sum(1 for r in semi_sites.values() if any_violation(r))
+    v3 = figure(results, "v3_purposes_matte")
+    v3_either = figure(results, "v3_either_matte")
     figures = {"v1_some": v1_some, "v1_all": v1_all, "v1": v1_total, "v1_matte_denominator": v1_matte_denominator,
-               "v2": v2, "v3": v3,
+               "v2": v2, "v3": v3, "v3_either": v3_either,
                "v4_some": v4_some, "v4_all": v4_all, "v4": v4_all,
-               "any": {"hits": any_main, "denominator": len(semi_sites), "text": percent(any_main, len(semi_sites))}}
+               "any": {f"{handling}_{what}": any_violation_figure(semi_sites, handling, what)
+                       for handling in v.COOKIEWALL_HANDLINGS for what in ("purposes", "either")}}
     v2_text = " / ".join(f"{v2[h]['text']} ({v.COOKIEWALL_TEXT[h]})" for h in v.COOKIEWALL_HANDLINGS)
     rows = [
         ["1 bis weniger als alle Zwecke (V4: locker ohne Matte-Variante)", f"{v1_some['text']} [Matte {MATTE_TAB_III['v1_some']}]", "–", "–",
@@ -202,13 +204,17 @@ def tab_iii(results, semi_sites):
         ["**Gesamt (gewertete Fälle)**",
          f"**{v1_total['text']}**; mit Mattes Nenner {v1_matte_denominator['text']} [Matte "
          + "; ".join(f"{where} {value}, {source}" for where, value, source in MATTE_V1) + "]",
-         f"**{v2_text}** [Matte {MATTE_TAB_III['v2']}]", f"**{v3['text']}** [Matte {MATTE_TAB_III['v3']}]",
+         f"**{v2_text}** [Matte {MATTE_TAB_III['v2']}]",
+         f"**{v3['text']} (nur Zwecke, wie Matte)**; Zwecke oder Vendoren {v3_either['text']} [Matte {MATTE_TAB_III['v3']}]",
          f"**{v4_all['text']}** [Matte {MATTE_TAB_III['v4']}]"],
     ]
     text = table(["Anzahl Zwecke (V1) / Variante (V4)", "V1 Zustimmung vor der Wahl", "V2 Keine Ablehnmöglichkeit",
                   "V3 Vorausgewählt", "V4 Wahl nicht respektiert"], rows)
-    text += (f"\n\nIrgendein Verstoß (V1 Hauptzahl, V2 mit w ausgeschlossen, V3 Zwecke oder Vendoren, "
-             f"V4 Matte-Variante): **{figures['any']['text']}** [Matte {MATTE_TAB_III['any']}]")
+    any_rows = [[label] + [figures["any"][f"{handling}_{what}"]["text"] for handling in v.COOKIEWALL_HANDLINGS]
+                for what, label in (("purposes", "V3 nur Zwecke (wie Matte)"), ("either", "V3 Zwecke oder Vendoren"))]
+    text += (f"\n\nIrgendein Verstoß (V1 Hauptzahl, V4 Matte-Variante, V2 und V3 je nach Spalte und Zeile) "
+             f"[Matte {MATTE_TAB_III['any']}]:\n\n"
+             + table(["", "w ausgeschlossen (auch aus dem Nenner)", "w als V2"], any_rows))
     return figures, text
 
 
@@ -216,14 +222,28 @@ TAB_III_MAPPING = """Zuordnung zu Matte Tab. III:
 
 - V1 Gesamt ↔ „1 to 5 purposes“ (Spalte „Consent stored before choice“, Summe beider Zeilen): Kanal 1, beide Vorher-Snapshots des automatischen Modus zeigen ≥ 1 Zweck. Zeile „alle Zwecke“ ↔ „5 purposes“, Zeile „1 bis weniger als alle“ ↔ „1 to 4 purposes“. Nenner: alle auswertbaren Seiten des automatischen Modus; nicht auswertbare Seiten (E7) stehen unten. „Mit Mattes Nenner“: alle TCF-Seiten des automatischen Modus, eine Seite ohne TC-String gilt als kein Verstoß (Matte S. 7). Vergleichswerte: .de (Tab. V, 56 Seiten) ist der wichtigste Vergleich; dazu die 6 TLDs des halbautomatischen Teils (Tab. IV a, 560 Seiten) und alle TLDs (Tab. III, 1426 Seiten). Die Zeilen nach Anzahl Zwecke gibt Matte nur für alle TLDs an.
 - V2 ↔ „No way to opt out“: Code `n` (Ablehnen gar nicht möglich); `w` je nach Variante ausgeschlossen oder als V2 gezählt. Nenner: alle halbautomatisch geprüften Seiten mit gültigem Ergebnis (Matte: 560).
-- V3 ↔ „Pre-selected choices“: Zwecke **oder** Vendoren vorausgewählt; Nenner wie bei Matte alle Seiten mit kostenloser Ablehnmöglichkeit (Matte: 508), ohne 2. Ebene = nicht vorausgewählt. Die Hauptzahl mit dem Nenner „2. Ebene vorhanden“ steht unten (V3).
+- V3 ↔ „Pre-selected choices“: Hauptvergleich wie Mattes Messung (S. 7, IV-E: „at least one pre-selected checkbox or enabled slider for at least one purpose“) nur Zwecke vorausgewählt; dazu Zwecke **oder** Vendoren wie in Mattes Definition (S. 5, III: „purposes or vendors“). Nenner wie bei Matte alle Seiten mit kostenloser Ablehnmöglichkeit (Matte: 508), ohne 2. Ebene = nicht vorausgewählt. Die Werte mit dem Nenner „2. Ebene vorhanden“ stehen unten (V3).
 - V4 Matte-Variante ↔ „5 purposes“ (in Tab. III fett, gewertet): nach Ablehnen alle Zwecke gesetzt, die nach Akzeptieren gesetzt sind, und ≥ 1 Vendor-Consent. V4 locker (≥ 1 Zweck nach Ablehnen) ↔ „1 to 4 purposes“ zusammen mit „5 purposes“; die erste Zeile zeigt bei V4 locker **ohne** die Matte-Variante, wie Mattes Zeile „1 to 4 purposes“ (dort nicht gewertet); dazu gehört auch „streng ohne Vendor-Consent“, selbst wenn alle Zwecke gesetzt sind. Bei V4 benennen die Zeilen also die Variante, nicht die Zahl der Zwecke. Nenner: Seiten mit Code `r` und auswertbarem Snapshot (Matte: 508). Berechnet auf den Snapshots nach dem Reload.
-- Irgendein Verstoß ↔ „Any violation“ (Matte: 304/560)."""
+- Irgendein Verstoß ↔ „Any violation“ (Matte: 304/560): V1 Hauptzahl, V4 Matte-Variante, dazu V2 mit `w` ausgeschlossen (dann auch aus dem Nenner) oder als V2 gezählt und V3 nur Zwecke (wie Matte) oder Zwecke oder Vendoren. Nenner: alle halbautomatisch geprüften Seiten (ohne `w`, wenn `w` ausgeschlossen ist)."""
 
 
-def any_violation(r):
-    return (r["v1"]["value"] == v.YES or r["v2_exclude"]["value"] == v.YES
-            or r["v3_either_matte"]["value"] == v.YES or r["v4_matte"]["value"] == v.YES)
+def is_cookiewall(r):
+    """Code w: no free way to reject."""
+    return r["v2_count_as_v2"].get("level") == "gar nicht (Cookiewall)"
+
+
+def any_violation(r, handling="exclude", what="purposes"):
+    """handling: w excluded or counted as V2 (v.COOKIEWALL_HANDLINGS); what: V3 only purposes
+    (as Matte) or purposes or vendors."""
+    return (r["v1"]["value"] == v.YES or r[f"v2_{handling}"]["value"] == v.YES
+            or r[f"v3_{what}_matte"]["value"] == v.YES or r["v4_matte"]["value"] == v.YES)
+
+
+def any_violation_figure(semi_sites, handling, what):
+    """With w excluded, the cookiewalls are also left out of the denominator."""
+    sites = [r for r in semi_sites.values() if handling != "exclude" or not is_cookiewall(r)]
+    hits = sum(1 for r in sites if any_violation(r, handling, what))
+    return {"hits": hits, "denominator": len(sites), "text": percent(hits, len(sites))}
 
 
 def details(results, semi_sites, sites):
@@ -258,6 +278,7 @@ def details(results, semi_sites, sites):
 
     block("V3 Vorausgewählt (Nenner: Code r und 2. Ebene vorhanden; „?“ = nicht geprüft, außerhalb des Nenners)", [
         line("Zwecke vorausgewählt", "v3_purposes"), line("Vendoren vorausgewählt", "v3_vendors"),
+        line("Zwecke (Nenner wie Matte: alle r)", "v3_purposes_matte"),
         line("Zwecke oder Vendoren (Nenner wie Matte: alle r)", "v3_either_matte")])
     cookiewall = [r["v3_cookiewall"] for r in results.values() if r["v3_cookiewall"]["value"] != v.NA]
     parts.append("Zusatzzeile: Vorauswahl auf der 2. Ebene bei Cookiewalls (w), nicht im Nenner von V3: "
